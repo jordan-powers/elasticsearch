@@ -14,7 +14,6 @@ import org.elasticsearch.search.fetch.StoredFieldsSpec;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Defines which fields need to be loaded from _ignored_source during a fetch
@@ -45,11 +44,6 @@ public record IgnoredFieldsSpec(Set<String> requiredIgnoredFields, IgnoredSource
     }
 
     public StoredFieldsSpec requiredStoredFields() {
-        return new StoredFieldsSpec(
-            false,
-            false,
-            requiredIgnoredFields.stream().flatMap(field -> format.requiredStoredFields(field).stream()).collect(Collectors.toSet())
-        );
-
+        return new StoredFieldsSpec(false, false, Set.of(IgnoredSourceFieldMapper.NAME));
     }
 }
