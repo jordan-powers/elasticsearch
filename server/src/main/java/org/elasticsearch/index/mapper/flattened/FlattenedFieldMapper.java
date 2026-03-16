@@ -38,6 +38,7 @@ import org.elasticsearch.common.lucene.Lucene;
 import org.elasticsearch.common.lucene.search.AutomatonQueries;
 import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.common.util.BigArrays;
+import org.elasticsearch.common.util.FeatureFlag;
 import org.elasticsearch.core.Nullable;
 import org.elasticsearch.index.IndexMode;
 import org.elasticsearch.index.IndexSettings;
@@ -876,6 +877,8 @@ public final class FlattenedFieldMapper extends FieldMapper {
         private final List<String> dimensions;
         private final boolean isDimension;
         private final boolean isSyntheticSourceEnabled;
+
+        public static FeatureFlag ESQL_LOAD_ROOT_FLATTENED_FIELDS_FF = new FeatureFlag("esql_load_root_flattened_fields");
 
         RootFlattenedFieldType(
             String name,

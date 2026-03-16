@@ -15,6 +15,7 @@ import org.elasticsearch.common.io.stream.Writeable;
 import org.elasticsearch.index.IndexMode;
 import org.elasticsearch.index.mapper.SourceFieldMapper;
 import org.elasticsearch.index.mapper.TimeSeriesIdFieldMapper;
+import org.elasticsearch.index.mapper.flattened.FlattenedFieldMapper;
 import org.elasticsearch.xpack.esql.core.QlIllegalArgumentException;
 import org.elasticsearch.xpack.esql.io.stream.PlanStreamInput;
 import org.elasticsearch.xpack.esql.io.stream.PlanStreamOutput;
@@ -513,8 +514,10 @@ public enum DataType implements Writeable {
         // semantic_text is returned as text by field_caps, but unit tests will retrieve it from the mapping
         // so we need to map it here as well
         map.put("semantic_text", DataType.TEXT);
-        // Root flattened fields are loaded as a JSON blob via RootFlattenedFieldType#blockLoader
-        map.put("flattened", DataType.SOURCE);
+        if (FlattenedFieldMapper.RootFlattenedFieldType.ESQL_LOAD_ROOT_FLATTENED_FIELDS_FF.isEnabled()) {
+            // Root flattened fields are loaded as a JSON blob via RootFlattenedFieldType#blockLoader
+            map.put("flattened", DataType.SOURCE);
+        }
         ES_TO_TYPE = Collections.unmodifiableMap(map);
         // DATETIME has different esType and typeName, add an entry in NAME_TO_TYPE with date as key
         map = TYPES.stream().collect(toMap(DataType::typeName, t -> t));

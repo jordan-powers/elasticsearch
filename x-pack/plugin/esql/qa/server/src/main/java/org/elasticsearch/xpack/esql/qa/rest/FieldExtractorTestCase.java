@@ -324,6 +324,12 @@ public abstract class FieldExtractorTestCase extends ESRestTestCase {
     }
 
     public void testFlattenedAsKeyword() throws IOException {
+        var capsName = EsqlCapabilities.Cap.LOAD_FLATTENED_FIELD_ROOT_VALUES.name().toLowerCase(Locale.ROOT);
+        assumeTrue(
+            "cluster must support loading flattened field root values",
+            clusterHasCapability("POST", "/_query", List.of(), List.of(capsName)).orElse(false)
+        );
+
         new Test("flattened").createIndex("test", "flattened");
         index("test", """
             {"flattened": {"a": "foo"}}""");

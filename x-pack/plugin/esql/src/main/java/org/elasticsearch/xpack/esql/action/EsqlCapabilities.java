@@ -12,6 +12,7 @@ import org.elasticsearch.common.util.FeatureFlag;
 import org.elasticsearch.compute.lucene.query.LuceneQueryEvaluator;
 import org.elasticsearch.compute.lucene.read.ValuesSourceReaderOperator;
 import org.elasticsearch.features.NodeFeature;
+import org.elasticsearch.index.mapper.flattened.FlattenedFieldMapper;
 import org.elasticsearch.rest.action.admin.cluster.RestNodesCapabilitiesAction;
 import org.elasticsearch.xpack.core.esql.EsqlFeatureFlags;
 import org.elasticsearch.xpack.esql.expression.function.EsqlFunctionRegistry;
@@ -361,6 +362,11 @@ public class EsqlCapabilities {
          * is only supported by full integration tests. So this capability is used to disable some tests in CsvTests.
          */
         LOAD_FLATTENED_FIELD,
+
+        /**
+         * Support for loading root flattened fields as DataType.SOURCE instead of DataType.UNSUPPORTED.
+         */
+        LOAD_FLATTENED_FIELD_ROOT_VALUES(FlattenedFieldMapper.RootFlattenedFieldType.ESQL_LOAD_ROOT_FLATTENED_FIELDS_FF),
 
         /**
          * Optimization for ST_CENTROID changed some results in cartesian data. #108713
