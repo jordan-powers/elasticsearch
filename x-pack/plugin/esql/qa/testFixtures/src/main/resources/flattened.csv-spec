@@ -1,5 +1,6 @@
 flattened root fields
 required_capability: load_flattened_field
+required_capability: load_flattened_field_root_values
 
 FROM flattened_otel_logs
 | SORT @timestamp ASC
@@ -14,6 +15,7 @@ FROM flattened_otel_logs
 // ----------------------------------------------------
 flattened KEEP root field
 required_capability: load_flattened_field
+required_capability: load_flattened_field_root_values
 
 FROM flattened_otel_logs
 | KEEP @timestamp, resource.attributes
@@ -31,6 +33,7 @@ FROM flattened_otel_logs
 flattened JSON_EXTRACT subfield
 required_capability: fn_json_extract
 required_capability: load_flattened_field
+required_capability: load_flattened_field_root_values
 
 SET unmapped_fields="load"\;
 FROM flattened_otel_logs
@@ -129,6 +132,7 @@ FROM flattened_otel_logs
 // ----------------------------------------------------
 flattened subfield with WHERE
 required_capability: load_flattened_field
+required_capability: load_flattened_field_root_values
 required_capability: optional_fields_v2
 
 SET unmapped_fields="load"\;
@@ -145,6 +149,7 @@ FROM flattened_otel_logs
 // ----------------------------------------------------
 flattened subfield with WHERE and KEEP *
 required_capability: load_flattened_field
+required_capability: load_flattened_field_root_values
 required_capability: optional_fields_v2
 
 SET unmapped_fields="load"\;
