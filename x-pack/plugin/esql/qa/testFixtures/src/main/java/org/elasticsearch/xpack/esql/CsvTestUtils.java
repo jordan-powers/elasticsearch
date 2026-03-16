@@ -11,11 +11,13 @@ import org.apache.lucene.sandbox.document.HalfFloatPoint;
 import org.apache.lucene.util.BytesRef;
 import org.elasticsearch.Version;
 import org.elasticsearch.common.breaker.NoopCircuitBreaker;
+import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.io.stream.BytesStreamOutput;
 import org.elasticsearch.common.network.InetAddresses;
 import org.elasticsearch.common.time.DateFormatters;
 import org.elasticsearch.common.time.DateUtils;
 import org.elasticsearch.common.util.BigArrays;
+import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.common.xcontent.XContentParserUtils;
 import org.elasticsearch.compute.data.AggregateMetricDoubleBlockBuilder;
 import org.elasticsearch.compute.data.Block;
@@ -504,7 +506,7 @@ public final class CsvTestUtils {
             BytesRef.class
         ),
         IP_RANGE(InetAddresses::parseCidr, BytesRef.class),
-        JSON(s -> s == null ? null : new BytesRef(s), BytesRef.class),
+        JSON(CsvTestUtils::parseJsonType, Map.class),
         DATE_RANGE(s -> EsqlDataTypeConverter.parseDateRange(s, ZoneOffset.UTC), LongRangeBlockBuilder.LongRange.class),
         VERSION(v -> new org.elasticsearch.xpack.versionfield.Version(v).toBytesRef(), BytesRef.class),
         NULL(s -> s, Void.class),
@@ -758,6 +760,13 @@ public final class CsvTestUtils {
     private static double scaledFloat(String value, String factor) {
         double scalingFactor = Double.parseDouble(factor);
         return new BigDecimal(value).multiply(BigDecimal.valueOf(scalingFactor)).longValue() / scalingFactor;
+    }
+
+    private static Map<String, Object> parseJsonType(String value) {
+        if (value == null) {
+            return null;
+        }
+        return XContentHelper.convertToMap(new BytesArray(value), true).v2();
     }
 
     private static ExponentialHistogram parseExponentialHistogram(@Nullable String json) {
