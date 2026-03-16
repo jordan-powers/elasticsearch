@@ -366,7 +366,7 @@ public class EsqlCapabilities {
         /**
          * Support for loading root flattened fields as DataType.SOURCE instead of DataType.UNSUPPORTED.
          */
-        LOAD_FLATTENED_FIELD_ROOT_VALUES(FlattenedFieldMapper.RootFlattenedFieldType.ESQL_LOAD_ROOT_FLATTENED_FIELDS_FF),
+        LOAD_FLATTENED_FIELD_ROOT_VALUES(FlattenedFieldMapper.RootFlattenedFieldType.ESQL_LOAD_FLATTENED_FIELD_ROOT_VALUES_FF),
 
         /**
          * Optimization for ST_CENTROID changed some results in cartesian data. #108713

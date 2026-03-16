@@ -514,7 +514,7 @@ public enum DataType implements Writeable {
         // semantic_text is returned as text by field_caps, but unit tests will retrieve it from the mapping
         // so we need to map it here as well
         map.put("semantic_text", DataType.TEXT);
-        if (FlattenedFieldMapper.RootFlattenedFieldType.ESQL_LOAD_ROOT_FLATTENED_FIELDS_FF.isEnabled()) {
+        if (FlattenedFieldMapper.RootFlattenedFieldType.ESQL_LOAD_FLATTENED_FIELD_ROOT_VALUES_FF.isEnabled()) {
             // Root flattened fields are loaded as a JSON blob via RootFlattenedFieldType#blockLoader
             map.put("flattened", DataType.SOURCE);
         }

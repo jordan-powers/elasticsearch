@@ -878,7 +878,7 @@ public final class FlattenedFieldMapper extends FieldMapper {
         private final boolean isDimension;
         private final boolean isSyntheticSourceEnabled;
 
-        public static FeatureFlag ESQL_LOAD_ROOT_FLATTENED_FIELDS_FF = new FeatureFlag("esql_load_root_flattened_fields");
+        public static FeatureFlag ESQL_LOAD_FLATTENED_FIELD_ROOT_VALUES_FF = new FeatureFlag("esql_load_flattened_field_root_values");
 
         RootFlattenedFieldType(
             String name,
