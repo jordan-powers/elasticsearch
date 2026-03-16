@@ -323,7 +323,7 @@ public abstract class FieldExtractorTestCase extends ESRestTestCase {
         intTest().createAlias().test(randomInt());
     }
 
-    public void testFlattenedAsKeyword() throws IOException {
+    public void testFlattenedAsSource() throws IOException {
         var capsName = EsqlCapabilities.Cap.LOAD_FLATTENED_FIELD_ROOT_VALUES.name().toLowerCase(Locale.ROOT);
         assumeTrue(
             "cluster must support loading flattened field root values",
@@ -336,7 +336,7 @@ public abstract class FieldExtractorTestCase extends ESRestTestCase {
         Map<String, Object> result = runEsql("FROM test* | LIMIT 2");
 
         // Root flattened field is loaded as keyword (JSON blob) via RootFlattenedFieldType#blockLoader
-        assertResultMap(result, List.of(columnInfo("flattened", "keyword")), List.of(matchesList().item("{\"a\":\"foo\"}")));
+        assertResultMap(result, List.of(columnInfo("flattened", "_source")), List.of(matchesList().item(matchesMap(Map.of("a", "foo")))));
     }
 
     public void testEmptyMapping() throws IOException {
