@@ -283,6 +283,10 @@ public final class CsvAssert {
             if (type == CsvTestUtils.Type.LONG) {
                 return ((Number) value).longValue();
             }
+            if (type == Type.JSON) {
+                assert value instanceof Map;
+                return value;
+            }
             return value.toString();
         }
 

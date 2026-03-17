@@ -584,6 +584,8 @@ public final class CsvTestUtils {
             LOOKUP.put("V", VERSION);
 
             LOOKUP.put("DENSE_VECTOR", DENSE_VECTOR);
+
+            LOOKUP.put("_SOURCE", JSON);
         }
 
         private final Function<String, Object> converter;
