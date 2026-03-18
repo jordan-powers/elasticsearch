@@ -35,7 +35,6 @@ required_capability: fn_json_extract
 required_capability: load_flattened_field
 required_capability: load_flattened_field_root_values
 
-SET unmapped_fields="load"\;
 FROM flattened_otel_logs
 | EVAL host_name = JSON_EXTRACT(resource.attributes, "host.name")
 | KEEP @timestamp, host_name
