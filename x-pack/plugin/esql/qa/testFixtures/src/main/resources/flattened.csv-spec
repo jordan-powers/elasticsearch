@@ -55,7 +55,8 @@ FROM flattened_otel_logs
 ;
 
 // ----------------------------------------------------
-flattened KEEP subfield
+# Temporarily ignored since loading subfields of flattened type is not allowed
+flattened KEEP subfield-Ignore
 required_capability: load_flattened_field
 required_capability: optional_fields_v2
 
@@ -79,7 +80,8 @@ FROM flattened_otel_logs
 ;
 
 // ----------------------------------------------------
-flattened DROP subfield
+# Temporarily ignored since loading subfields of flattened type is not allowed
+flattened DROP subfield-Ignore
 required_capability: load_flattened_field
 required_capability: optional_fields_v2
 
@@ -104,7 +106,8 @@ FROM flattened_otel_logs
 ;
 
 // ----------------------------------------------------
-flattened DROP subfield after KEEP
+# Temporarily ignored since loading subfields of flattened type is not allowed
+flattened DROP subfield after KEEP-Ignore
 required_capability: load_flattened_field
 required_capability: optional_fields_v2
 
@@ -129,7 +132,8 @@ FROM flattened_otel_logs
 ;
 
 // ----------------------------------------------------
-flattened subfield with WHERE
+# Temporarily ignored since loading subfields of flattened type is not allowed
+flattened subfield with WHERE-Ignore
 required_capability: load_flattened_field
 required_capability: load_flattened_field_root_values
 required_capability: optional_fields_v2
@@ -146,7 +150,8 @@ FROM flattened_otel_logs
 ;
 
 // ----------------------------------------------------
-flattened subfield with WHERE and KEEP *
+# Temporarily ignored since loading subfields of flattened type is not allowed
+flattened subfield with WHERE and KEEP *-Ignore
 required_capability: load_flattened_field
 required_capability: load_flattened_field_root_values
 required_capability: optional_fields_v2
@@ -164,7 +169,8 @@ FROM flattened_otel_logs
 ;
 
 // ----------------------------------------------------
-flattened subfield with WHERE and KEEP specific subfields
+# Temporarily ignored since loading subfields of flattened type is not allowed
+flattened subfield with WHERE and KEEP specific subfields-Ignore
 required_capability: load_flattened_field
 required_capability: optional_fields_v2
 
@@ -181,7 +187,8 @@ FROM flattened_otel_logs
 ;
 
 // ----------------------------------------------------
-flattened subfield with EVAL TO_UPPER
+# Temporarily ignored since loading subfields of flattened type is not allowed
+flattened subfield with EVAL TO_UPPER-Ignore
 required_capability: load_flattened_field
 required_capability: optional_fields_v2
 
@@ -206,7 +213,8 @@ FROM flattened_otel_logs
 ;
 
 // ----------------------------------------------------
-flattened subfield with EVAL LENGTH
+# Temporarily ignored since loading subfields of flattened type is not allowed
+flattened subfield with EVAL LENGTH-Ignore
 required_capability: load_flattened_field
 required_capability: optional_fields_v2
 
@@ -231,7 +239,8 @@ FROM flattened_otel_logs
 ;
 
 // ----------------------------------------------------
-SORT on flattened subfield
+# Temporarily ignored since loading subfields of flattened type is not allowed
+SORT on flattened subfield-Ignore
 required_capability: load_flattened_field
 required_capability: optional_fields_v2
 
@@ -255,7 +264,8 @@ FROM flattened_otel_logs
 ;
 
 // ----------------------------------------------------
-RENAME flattened subfield
+# Temporarily ignored since loading subfields of flattened type is not allowed
+RENAME flattened subfield-Ignore
 required_capability: load_flattened_field
 required_capability: optional_fields_v2
 
@@ -280,7 +290,8 @@ FROM flattened_otel_logs
 ;
 
 // ----------------------------------------------------
-flattened subfield with STATS count
+# Temporarily ignored since loading subfields of flattened type is not allowed
+flattened subfield with STATS count-Ignore
 required_capability: load_flattened_field
 required_capability: optional_fields_v2
 
@@ -294,7 +305,8 @@ count(*):long | resource.attributes.agent.type:keyword
 ;
 
 // ----------------------------------------------------
-flattened subfield with STATS count_distinct
+# Temporarily ignored since loading subfields of flattened type is not allowed
+flattened subfield with STATS count_distinct-Ignore
 required_capability: load_flattened_field
 required_capability: optional_fields_v2
 
@@ -308,7 +320,8 @@ count_distinct(resource.attributes.host.name):long
 ;
 
 // ----------------------------------------------------
-flattened subfield with INLINE STATS
+# Temporarily ignored since loading subfields of flattened type is not allowed
+flattened subfield with INLINE STATS-Ignore
 required_capability: load_flattened_field
 required_capability: optional_fields_v2
 
@@ -329,7 +342,8 @@ FROM flattened_otel_logs
 ;
 
 // ----------------------------------------------------
-flattened subfield with MV_EXPAND
+# Temporarily ignored since loading subfields of flattened type is not allowed
+flattened subfield with MV_EXPAND-Ignore
 required_capability: load_flattened_field
 required_capability: optional_fields_v2
 
