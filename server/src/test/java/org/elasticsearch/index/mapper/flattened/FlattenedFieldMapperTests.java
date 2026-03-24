@@ -1627,6 +1627,66 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
             {"field":{"a":{"b":{"c":"1"}},"b":{"b":{"d":"2"}}}}"""));
     }
 
+    private static void flattenedPreserveLeafArrayExample(XContentBuilder b) throws IOException {
+        b.startObject("field");
+        {
+            b.startArray("leaf_key");
+            b.value("zebra");
+            b.value("apple");
+            b.nullValue();
+            b.value("moon");
+            b.value("apple");
+            b.nullValue();
+            b.value("banana");
+            b.endArray();
+        }
+        b.endObject();
+    }
+
+    public void testSyntheticSourceSortedSetDocValuesWithPreserveLeafArraysLossy() throws IOException {
+        DocumentMapper mapper = createSytheticSourceMapperService(mapping(b -> {
+            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "LOSSY").endObject();
+        })).documentMapper();
+
+        assertThat(syntheticSource(mapper, FlattenedFieldMapperTests::flattenedPreserveLeafArrayExample), equalTo("""
+            {"field":{"leaf_key":["apple","banana","moon","zebra"]}}"""));
+    }
+
+    public void testSyntheticSourceBinaryDocValuesWithPreserveLeafArraysLossy() throws IOException {
+        Settings settings = Settings.builder()
+            .put("index.mapping.source.mode", "synthetic")
+            .put(IndexSettings.USE_TIME_SERIES_DOC_VALUES_FORMAT_SETTING.getKey(), true)
+            .build();
+        DocumentMapper mapper = createMapperService(settings, mapping(b -> {
+            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "LOSSY").endObject();
+        })).documentMapper();
+
+        assertThat(syntheticSource(mapper, FlattenedFieldMapperTests::flattenedPreserveLeafArrayExample), equalTo("""
+            {"field":{"leaf_key":["apple","banana","moon","zebra"]}}"""));
+    }
+
+    public void testSyntheticSourceSortedSetDocValuesWithPreserveLeafArraysExact() throws IOException {
+        DocumentMapper mapper = createSytheticSourceMapperService(mapping(b -> {
+            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "EXACT").endObject();
+        })).documentMapper();
+
+        assertThat(syntheticSource(mapper, FlattenedFieldMapperTests::flattenedPreserveLeafArrayExample), equalTo("""
+            {"field":{"leaf_key":["zebra","apple",null,"moon","apple",null,"banana"]}}"""));
+    }
+
+    public void testSyntheticSourceBinaryDocValuesWithPreserveLeafArraysExact() throws IOException {
+        Settings settings = Settings.builder()
+            .put("index.mapping.source.mode", "synthetic")
+            .put(IndexSettings.USE_TIME_SERIES_DOC_VALUES_FORMAT_SETTING.getKey(), true)
+            .build();
+        DocumentMapper mapper = createMapperService(settings, mapping(b -> {
+            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "EXACT").endObject();
+        })).documentMapper();
+
+        assertThat(syntheticSource(mapper, FlattenedFieldMapperTests::flattenedPreserveLeafArrayExample), equalTo("""
+            {"field":{"leaf_key":["zebra","apple",null,"moon","apple",null,"banana"]}}"""));
+    }
+
     public void testMultipleDotsInPath() throws IOException {
         DocumentMapper mapper = createSytheticSourceMapperService(
             mapping(b -> { b.startObject("field").field("type", "flattened").endObject(); })
