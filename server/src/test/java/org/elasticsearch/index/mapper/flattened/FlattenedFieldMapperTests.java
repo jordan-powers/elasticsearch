@@ -693,6 +693,26 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
         assertTrue(fieldMapper.fieldType().eagerGlobalOrdinals());
     }
 
+    public void testPreserveLeafArraysParameter() throws IOException {
+        for (var value : FlattenedFieldMapper.PreserveLeafArrays.values()) {
+            DocumentMapper documentMapper = createDocumentMapper(fieldMapping(b -> {
+                minimalMapping(b);
+                b.field("preserve_leaf_arrays", value.toString());
+            }));
+            var mapper = (FlattenedFieldMapper) documentMapper.mappers().getMapper("field");
+            assertThat(mapper.fieldType().preserveLeafArrays(), equalTo(value));
+        }
+
+        MapperParsingException e = expectThrows(MapperParsingException.class, () -> createDocumentMapper(fieldMapping(b -> {
+            minimalMapping(b);
+            b.field("preserve_leaf_arrays", "bogus");
+        })));
+        assertThat(
+            e.getMessage(),
+            equalTo("Failed to parse mapping: Unknown value [bogus] for field [preserve_leaf_arrays] - accepted values are [LOSSY, EXACT]")
+        );
+    }
+
     public void testIgnoreAbove() throws IOException {
         // First verify the default behavior when ignore_above is not set.
         MapperService mapperService = createMapperService(fieldMapping(this::minimalMapping));

@@ -149,6 +149,11 @@ public final class FlattenedFieldMapper extends FieldMapper {
         public static final int DEPTH_LIMIT = 20;
     }
 
+    public enum PreserveLeafArrays {
+        LOSSY,
+        EXACT
+    }
+
     private static Builder builder(Mapper in) {
         return ((FlattenedFieldMapper) in).builder;
     }
@@ -212,6 +217,14 @@ public final class FlattenedFieldMapper extends FieldMapper {
                 );
             }
         });
+
+        private final Parameter<PreserveLeafArrays> preserveLeafArrays = Parameter.enumParam(
+            "preserve_leaf_arrays",
+            false,
+            m -> builder(m).preserveLeafArrays.get(),
+            PreserveLeafArrays.LOSSY,
+            PreserveLeafArrays.class
+        );
 
         private final Parameter<Map<String, String>> meta = Parameter.metaParam();
 
@@ -318,7 +331,8 @@ public final class FlattenedFieldMapper extends FieldMapper {
                 splitQueriesOnWhitespace,
                 meta,
                 dimensions,
-                properties };
+                properties,
+                preserveLeafArrays };
         }
 
         @Override
@@ -1076,7 +1090,8 @@ public final class FlattenedFieldMapper extends FieldMapper {
             boolean usesBinaryDocValues,
             boolean hasRootDocValues,
             String nullValue,
-            boolean isSyntheticSourceEnabled
+            boolean isSyntheticSourceEnabled,
+            PreserveLeafArrays preserveLeafArrays
         ) {
             this(
                 name,
