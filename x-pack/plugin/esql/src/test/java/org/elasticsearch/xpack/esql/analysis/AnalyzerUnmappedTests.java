@@ -16,8 +16,8 @@ import org.elasticsearch.xpack.esql.core.expression.Expressions;
 import org.elasticsearch.xpack.esql.core.expression.FoldContext;
 import org.elasticsearch.xpack.esql.core.expression.MetadataAttribute;
 import org.elasticsearch.xpack.esql.core.expression.UnresolvedTimestamp;
+import org.elasticsearch.xpack.esql.core.type.DataType;
 import org.elasticsearch.xpack.esql.core.type.EsField;
-import org.elasticsearch.xpack.esql.core.type.UnsupportedEsField;
 import org.elasticsearch.xpack.esql.index.EsIndex;
 import org.elasticsearch.xpack.esql.plan.logical.Aggregate;
 import org.elasticsearch.xpack.esql.plan.logical.EsRelation;
@@ -28,6 +28,7 @@ import org.hamcrest.Matcher;
 import org.hamcrest.Matchers;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -767,7 +768,10 @@ public class AnalyzerUnmappedTests extends ESTestCase {
     }
 
     private static TestAnalyzer index1() {
-        Map<String, EsField> mapping = Map.of("field", new UnsupportedEsField("field", List.of("flattened")));
+        Map<String, EsField> mapping = Map.of(
+            "field",
+            new EsField("field", DataType.SOURCE, Collections.emptyMap(), false, EsField.TimeSeriesFieldType.UNKNOWN)
+        );
         return analyzer().addIndex(new EsIndex("test", mapping, Map.of("test", IndexMode.STANDARD), Map.of(), Map.of(), Set.of()));
     }
 

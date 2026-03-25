@@ -8,6 +8,7 @@
 package org.elasticsearch.xpack.esql.analysis;
 
 import org.elasticsearch.index.IndexMode;
+import org.elasticsearch.index.mapper.SourceFieldMapper;
 import org.elasticsearch.index.mapper.flattened.FlattenedFieldMapper;
 import org.elasticsearch.license.XPackLicenseState;
 import org.elasticsearch.xpack.esql.LicenseAware;
@@ -503,12 +504,21 @@ public class Verifier {
 
     private static Set<String> flattenedFieldNames(List<Attribute> attributes) {
         Set<String> names = new HashSet<>();
+        boolean loadFlattenedRoot = FlattenedFieldMapper.RootFlattenedFieldType.ESQL_LOAD_FLATTENED_FIELD_ROOT_VALUES_FF.isEnabled();
 
         for (Attribute attribute : attributes) {
-            if (attribute instanceof FieldAttribute fa
-                && fa.field() instanceof UnsupportedEsField uef
-                && uef.getOriginalTypes().contains(FlattenedFieldMapper.CONTENT_TYPE)) {
-                names.add(fa.name());
+            if (attribute instanceof FieldAttribute fa) {
+                var field = fa.field();
+                if (field instanceof UnsupportedEsField uef) {
+                    if (uef.getOriginalTypes().contains(FlattenedFieldMapper.CONTENT_TYPE)
+                        || (loadFlattenedRoot && uef.getOriginalTypes().contains(SourceFieldMapper.NAME))) {
+                        names.add(fa.name());
+                    }
+                } else if (loadFlattenedRoot
+                    && field.getDataType() == DataType.SOURCE
+                    && fa.name().equals(SourceFieldMapper.NAME) == false) {
+                        names.add(fa.name());
+                    }
             }
         }
 
