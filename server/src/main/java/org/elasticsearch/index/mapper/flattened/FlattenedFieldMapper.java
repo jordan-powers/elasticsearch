@@ -150,8 +150,18 @@ public final class FlattenedFieldMapper extends FieldMapper {
     }
 
     public enum PreserveLeafArrays {
-        LOSSY,
-        EXACT
+        LOSSY(true, false, false),
+        EXACT(false, true, true);
+
+        final boolean sorted;
+        final boolean keepDuplicates;
+        final boolean keepNulls;
+
+        PreserveLeafArrays(boolean sorted, boolean keepDuplicates, boolean keepNulls) {
+            this.sorted = sorted;
+            this.keepDuplicates = keepDuplicates;
+            this.keepNulls = keepNulls;
+        }
     }
 
     private static Builder builder(Mapper in) {
@@ -1332,6 +1342,7 @@ public final class FlattenedFieldMapper extends FieldMapper {
     private final FlattenedFieldParser fieldParser;
     private final Builder builder;
     private final Map<String, FieldMapper> mappedSubFields;
+    private final PreserveLeafArrays preserveLeafArrays;
 
     private FlattenedFieldMapper(
         String leafName,
@@ -1353,8 +1364,14 @@ public final class FlattenedFieldMapper extends FieldMapper {
             builder.nullValue.get(),
             builder.usesBinaryDocValues,
             builder.hasRootDocValues(),
-            mappedSubFields
+            mappedSubFields,
+            builder.preserveLeafArrays.get()
         );
+        this.preserveLeafArrays = builder.preserveLeafArrays.get();
+    }
+
+    public PreserveLeafArrays preserveLeafArrays() {
+        return preserveLeafArrays;
     }
 
     @Override
@@ -1409,12 +1426,23 @@ public final class FlattenedFieldMapper extends FieldMapper {
             return;
         }
 
+        FlattenedFieldArrayContext arrayContext;
+        if (preserveLeafArrays == PreserveLeafArrays.LOSSY) {
+            arrayContext = null;
+        } else {
+            arrayContext = new FlattenedFieldArrayContext(mappedFieldType.name());
+        }
+
         try {
             // make sure that we don't expand dots in field names while parsing
             context.path().setWithinLeafObject(true);
-            fieldParser.parse(context);
+            fieldParser.parse(context, arrayContext);
         } finally {
             context.path().setWithinLeafObject(false);
+        }
+
+        if (arrayContext != null) {
+            arrayContext.addToLuceneDocument(context);
         }
 
         if (mappedFieldType.hasDocValues() == false) {
@@ -1467,7 +1495,8 @@ public final class FlattenedFieldMapper extends FieldMapper {
                     fieldType().ignoreAbove.valuesPotentiallyIgnored() ? fullPath() + KEYED_IGNORED_VALUES_FIELD_SUFFIX : null,
                     leafName(),
                     builder.usesBinaryDocValues,
-                    toSubFieldLoaders(mappedSubFields)
+                    toSubFieldLoaders(mappedSubFields),
+                    preserveLeafArrays
                 )
             );
         }

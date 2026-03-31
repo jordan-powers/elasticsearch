@@ -37,6 +37,10 @@ class FlattenedDocValuesSyntheticFieldLoader implements SourceLoader.SyntheticFi
     protected DocValuesFieldValues docValues = NO_VALUES;
     protected List<Object> ignoredValues = List.of();
 
+    private FlattenedFieldMapper.PreserveLeafArrays preserveLeafArrays;
+    private final String offsetsFieldName;
+    private SortedBinaryDocValues offsetsDocValues;
+
     /**
      * Build a loader for flattened fields from either binary or sorted set doc values.
      *
@@ -55,7 +59,8 @@ class FlattenedDocValuesSyntheticFieldLoader implements SourceLoader.SyntheticFi
         @Nullable String keyedIgnoredValuesFieldFullPath,
         String leafName,
         boolean usesBinaryDocValues,
-        List<SourceLoader.SyntheticFieldLoader> mappedSubFieldLoaders
+        List<SourceLoader.SyntheticFieldLoader> mappedSubFieldLoaders,
+        FlattenedFieldMapper.PreserveLeafArrays preserveLeafArrays
     ) {
         this.fieldFullPath = fieldFullPath;
         this.keyedFieldFullPath = keyedFieldFullPath;
@@ -63,6 +68,8 @@ class FlattenedDocValuesSyntheticFieldLoader implements SourceLoader.SyntheticFi
         this.leafName = leafName;
         this.usesBinaryDocValues = usesBinaryDocValues;
         this.mappedSubFieldLoaders = mappedSubFieldLoaders;
+        this.preserveLeafArrays = preserveLeafArrays;
+        this.offsetsFieldName = FlattenedFieldArrayContext.getOffsetsFieldName(fieldFullPath);
     }
 
     @Override
@@ -108,6 +115,16 @@ class FlattenedDocValuesSyntheticFieldLoader implements SourceLoader.SyntheticFi
             }
         }
 
+        if (docValues != NO_VALUES) {
+            var binaryDv = reader.getBinaryDocValues(offsetsFieldName);
+            if (binaryDv != null) {
+                offsetsDocValues = MultiValuedSortedBinaryDocValues.from(reader, offsetsFieldName, binaryDv);
+                allLoaders.add(offsetsDocValues::advanceExact);
+            } else {
+                offsetsDocValues = null;
+            }
+        }
+
         for (SourceLoader.SyntheticFieldLoader subFieldLoader : mappedSubFieldLoaders) {
             DocValuesLoader subFieldDvLoader = subFieldLoader.docValuesLoader(reader, docIdsInLeaf);
             if (subFieldDvLoader != null) {
@@ -148,7 +165,7 @@ class FlattenedDocValuesSyntheticFieldLoader implements SourceLoader.SyntheticFi
         return false;
     }
 
-    protected FlattenedFieldSyntheticWriterHelper getWriter() {
+    protected FlattenedFieldSyntheticWriterHelper getWriter() throws IOException {
         FlattenedFieldSyntheticWriterHelper.SortedKeyedValues sortedKeyedValues = docValues.getValues();
         if (ignoredValues.isEmpty() == false) {
             var ignoredValuesSet = new TreeSet<BytesRef>();
@@ -158,7 +175,11 @@ class FlattenedDocValuesSyntheticFieldLoader implements SourceLoader.SyntheticFi
             ignoredValues = List.of();
             sortedKeyedValues = new DocValuesWithIgnoredSortedKeyedValues(sortedKeyedValues, ignoredValuesSet);
         }
-        return new FlattenedFieldSyntheticWriterHelper(sortedKeyedValues);
+        Map<String, int[]> offsets = null;
+        if (offsetsDocValues != null) {
+            offsets = FlattenedFieldArrayContext.parseOffsetField(offsetsDocValues);
+        }
+        return new FlattenedFieldSyntheticWriterHelper(sortedKeyedValues, offsets);
     }
 
     @Override

@@ -15,6 +15,7 @@ import org.elasticsearch.xcontent.XContentBuilder;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -170,9 +171,11 @@ public class FlattenedFieldSyntheticWriterHelper {
     }
 
     private final SortedKeyedValues sortedKeyedValues;
+    private final Map<String, int[]> offsets;
 
-    public FlattenedFieldSyntheticWriterHelper(final SortedKeyedValues sortedKeyedValues) {
+    public FlattenedFieldSyntheticWriterHelper(final SortedKeyedValues sortedKeyedValues, Map<String, int[]> offsets) {
         this.sortedKeyedValues = sortedKeyedValues;
+        this.offsets = offsets;
     }
 
     private String concatPath(Prefix prefix, String leaf) {
@@ -213,14 +216,14 @@ public class FlattenedFieldSyntheticWriterHelper {
                 // processing "foo.bar", we check if `lastScalarSingleLeaf` ("foo") is a prefix of "foo.bar". Since it is, this indicates a
                 // conflict: a scalar value and an object share the same key ("foo"). To disambiguate, we create a concatenated key
                 // "foo.bar" with the value 20 in the current object, rather than creating a nested object as usual.
-                writeField(b, values, concatPath(startPrefix, curr.leaf()));
+                writeField(b, values, concatPath(startPrefix, curr.leaf()), getOffsets(curr));
             } else {
                 // Since there is not an existing key in the object that is a prefix of the path, we can traverse down into the path
                 // and open objects. After opening all objects in the path, write out the field with only the current leaf as the key.
                 // Finally, save the current leaf in `lastScalarSingleLeaf`, in case there is a future object within the recently opened
                 // object which has the same key as the current leaf.
                 startObject(b, startPrefix.parts, openObjects.parts);
-                writeField(b, values, curr.leaf());
+                writeField(b, values, curr.leaf(), getOffsets(curr));
                 lastScalarSingleLeaf = curr.leaf();
             }
 
@@ -229,6 +232,14 @@ public class FlattenedFieldSyntheticWriterHelper {
 
             curr = next;
         }
+    }
+
+    private int[] getOffsets(KeyValue curr) {
+        if (offsets == null) {
+            return null;
+        }
+
+        return offsets.get(concatPath(curr.prefix, curr.leaf));
     }
 
     private static void endObject(final XContentBuilder b, int numObjectsToClose, List<String> openObjects) throws IOException {
@@ -245,8 +256,18 @@ public class FlattenedFieldSyntheticWriterHelper {
         }
     }
 
-    private static void writeField(XContentBuilder b, List<String> values, String leaf) throws IOException {
-        if (values.size() > 1) {
+    private static void writeField(XContentBuilder b, List<String> values, String leaf, int[] offsetToOrd) throws IOException {
+        if (offsetToOrd != null) {
+            b.startArray(leaf);
+            for (int offset : offsetToOrd) {
+                if (offset == -1) {
+                    b.nullValue();
+                } else {
+                    b.value(values.get(offset));
+                }
+            }
+            b.endArray();
+        } else if (values.size() > 1) {
             b.field(leaf, values);
         } else {
             // NOTE: here we make the assumption that fields with just one value are not arrays.

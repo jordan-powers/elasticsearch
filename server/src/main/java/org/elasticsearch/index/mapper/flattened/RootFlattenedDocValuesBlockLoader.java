@@ -187,7 +187,16 @@ final class RootFlattenedDocValuesBlockLoader implements BlockLoader {
             boolean usesBinaryDocValues,
             List<SourceLoader.SyntheticFieldLoader> mappedSubFieldLoaders
         ) {
-            super(fieldFullPath, keyedFieldFullPath, keyedIgnoredValuesFieldFullPath, leafName, usesBinaryDocValues, mappedSubFieldLoaders);
+            // TODO: don't hard-code LOSSY here, instead pass in the actual set value
+            super(
+                fieldFullPath,
+                keyedFieldFullPath,
+                keyedIgnoredValuesFieldFullPath,
+                leafName,
+                usesBinaryDocValues,
+                mappedSubFieldLoaders,
+                FlattenedFieldMapper.PreserveLeafArrays.LOSSY
+            );
         }
 
         public void writeToBlock(BlockLoader.BytesRefBuilder builder) throws IOException {

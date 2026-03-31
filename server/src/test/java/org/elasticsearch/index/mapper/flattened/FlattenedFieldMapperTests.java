@@ -700,7 +700,7 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
                 b.field("preserve_leaf_arrays", value.toString());
             }));
             var mapper = (FlattenedFieldMapper) documentMapper.mappers().getMapper("field");
-            assertThat(mapper.fieldType().preserveLeafArrays(), equalTo(value));
+            assertThat(mapper.preserveLeafArrays(), equalTo(value));
         }
 
         MapperParsingException e = expectThrows(MapperParsingException.class, () -> createDocumentMapper(fieldMapping(b -> {
