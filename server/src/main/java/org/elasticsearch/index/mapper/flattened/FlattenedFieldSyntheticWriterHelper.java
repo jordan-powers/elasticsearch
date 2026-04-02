@@ -14,9 +14,12 @@ import org.elasticsearch.xcontent.XContentBuilder;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * A helper class that reconstructs the field including keys and values
@@ -256,8 +259,19 @@ public class FlattenedFieldSyntheticWriterHelper {
         }
     }
 
+    private static boolean checkAllValuesAreUsed(List<String> values, int[] offsetToOrd) {
+        Set<Integer> offsets = Arrays.stream(offsetToOrd).boxed().collect(Collectors.toSet());
+        for (int i = 0; i < values.size(); i++) {
+            if (offsets.contains(i) == false) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private static void writeField(XContentBuilder b, List<String> values, String leaf, int[] offsetToOrd) throws IOException {
         if (offsetToOrd != null) {
+            assert checkAllValuesAreUsed(values, offsetToOrd);
             b.startArray(leaf);
             for (int offset : offsetToOrd) {
                 if (offset == -1) {

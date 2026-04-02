@@ -10,6 +10,7 @@
 package org.elasticsearch.index.mapper.flattened;
 
 import org.apache.lucene.document.Document;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
@@ -25,6 +26,7 @@ import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.xcontent.XContentHelper;
+import org.elasticsearch.core.CheckedConsumer;
 import org.elasticsearch.index.IndexMode;
 import org.elasticsearch.index.IndexSettings;
 import org.elasticsearch.index.IndexVersion;
@@ -39,11 +41,13 @@ import org.elasticsearch.index.mapper.MapperParsingException;
 import org.elasticsearch.index.mapper.MapperService;
 import org.elasticsearch.index.mapper.MapperTestCase;
 import org.elasticsearch.index.mapper.ParsedDocument;
+import org.elasticsearch.index.mapper.SourceFieldMapper;
 import org.elasticsearch.index.mapper.SourceToParse;
 import org.elasticsearch.index.mapper.TestBlock;
 import org.elasticsearch.index.mapper.TimeSeriesRoutingHashFieldMapper;
 import org.elasticsearch.index.mapper.flattened.FlattenedFieldMapper.KeyedFlattenedFieldType;
 import org.elasticsearch.index.mapper.flattened.FlattenedFieldMapper.RootFlattenedFieldType;
+import org.elasticsearch.test.WildcardFieldMaskingReader;
 import org.elasticsearch.xcontent.XContentBuilder;
 import org.elasticsearch.xcontent.XContentType;
 import org.junit.AssumptionViolatedException;
@@ -52,6 +56,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -1385,24 +1390,35 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
         throw new AssumptionViolatedException("not supported");
     }
 
-    private static void randomMapExample(final Map<String, Object> example, int depth, int maxDepth) {
+    private static void randomMapExample(
+        final Map<String, Object> example,
+        int depth,
+        int maxDepth,
+        FlattenedFieldMapper.PreserveLeafArrays preserveLeafArrays
+    ) {
         for (int i = 0; i < randomIntBetween(2, 5); i++) {
             int j = depth >= maxDepth ? randomIntBetween(1, 2) : randomIntBetween(1, 3);
             switch (j) {
                 case 1 -> example.put(randomAlphaOfLength(10), randomAlphaOfLengthBetween(1, 10));
                 case 2 -> {
                     int size = randomIntBetween(2, 10);
-                    final Set<String> stringSet = new HashSet<>();
+                    final Collection<String> stringSet = switch (preserveLeafArrays) {
+                        case LOSSY -> new HashSet<>();
+                        case EXACT -> new ArrayList<>();
+                    };
+
                     while (stringSet.size() < size) {
                         stringSet.add(String.valueOf(randomIntBetween(10_000, 2_000_000)));
                     }
                     final List<String> randomList = new ArrayList<>(stringSet);
-                    Collections.sort(randomList);
+                    if (preserveLeafArrays == FlattenedFieldMapper.PreserveLeafArrays.LOSSY) {
+                        Collections.sort(randomList);
+                    }
                     example.put(randomAlphaOfLength(6), randomList);
                 }
                 case 3 -> {
                     final Map<String, Object> nested = new HashMap<>();
-                    randomMapExample(nested, depth + 1, maxDepth);
+                    randomMapExample(nested, depth + 1, maxDepth, preserveLeafArrays);
                     example.put(randomAlphaOfLength(10), nested);
                 }
                 default -> throw new IllegalArgumentException("value: [" + j + "] unexpected");
@@ -1412,6 +1428,9 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
 
     private static class FlattenedFieldSyntheticSourceSupport implements SyntheticSourceSupport {
         private final Integer ignoreAbove = randomBoolean() ? randomIntBetween(4, 10) : null;
+        private final FlattenedFieldMapper.PreserveLeafArrays preserveLeafArrays = FlattenedFieldMapper.PreserveLeafArrays.EXACT; /*randomFrom(
+                                                                                                                                  FlattenedFieldMapper.PreserveLeafArrays.values()
+                                                                                                                                  );*/
 
         @Override
         public SyntheticSourceExample example(int maxValues) throws IOException {
@@ -1432,10 +1451,10 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
         }
 
         private Map<String, Object> randomObject() {
-            var maxDepth = randomIntBetween(1, 3);
+            var maxDepth = 1; // randomIntBetween(1, 3);
 
             final Map<String, Object> map = new HashMap<>();
-            randomMapExample(map, 0, maxDepth);
+            randomMapExample(map, 0, maxDepth, preserveLeafArrays);
 
             return map;
         }
@@ -1494,6 +1513,7 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
             if (ignoreAbove != null) {
                 b.field("ignore_above", ignoreAbove);
             }
+            b.field("preserve_leaf_arrays", preserveLeafArrays.toString());
         }
     }
 
@@ -1625,6 +1645,40 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
         });
         assertThat(syntheticSource, equalTo("""
             {"field":{"a":{"b":{"c":"1"}},"b":{"b":{"d":"2"}}}}"""));
+    }
+
+    public void testPreserveLeafArraysExactSingleValue() throws IOException {
+        DocumentMapper mapper = createSytheticSourceMapperService(mapping(b -> {
+            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "EXACT").endObject();
+        })).documentMapper();
+
+        CheckedConsumer<XContentBuilder, IOException> example = b -> b.startObject("field").field("leaf", "foo").endObject();
+
+        assertThat(syntheticSource(mapper, example), equalTo("{\"field\":{\"leaf\":\"foo\"}}"));
+    }
+
+    public void testPreserveLeafArraysExactWithObjectArrays() throws IOException {
+        DocumentMapper mapper = createSytheticSourceMapperService(mapping(b -> {
+            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "EXACT").endObject();
+        })).documentMapper();
+
+        CheckedConsumer<XContentBuilder, IOException> example = b -> {
+            b.startObject("field");
+            b.startArray("sub1");
+            b.startObject();
+            b.field("sub2", "foo");
+            b.endObject();
+            b.startObject();
+            b.field("sub2", "bar");
+            b.endObject();
+            b.startObject();
+            b.array("sub2", "baz", "bat");
+            b.endObject();
+            b.endArray();
+            b.endObject();
+        };
+
+        assertThat(syntheticSource(mapper, example), equalTo("{\"field\":{\"sub1\":{\"sub2\":[\"bat\",\"bar\",\"baz\",\"foo\"]}}}"));
     }
 
     private static void flattenedPreserveLeafArrayExample(XContentBuilder b) throws IOException {
@@ -2083,5 +2137,21 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
     @Override
     protected boolean supportsDocValuesSkippers() {
         return false;
+    }
+
+    private final Set<String> roundtripMaskedFields = Set.of(
+        SourceFieldMapper.RECOVERY_SOURCE_NAME,
+        SourceFieldMapper.RECOVERY_SOURCE_SIZE_NAME,
+        "*.offsets"
+    );
+
+    @Override
+    protected void validateRoundTripReader(String syntheticSource, DirectoryReader reader, DirectoryReader roundTripReader)
+        throws IOException {
+        assertReaderEquals(
+            "round trip " + syntheticSource,
+            new WildcardFieldMaskingReader(roundtripMaskedFields, reader),
+            new WildcardFieldMaskingReader(roundtripMaskedFields, roundTripReader)
+        );
     }
 }

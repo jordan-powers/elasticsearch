@@ -150,18 +150,8 @@ public final class FlattenedFieldMapper extends FieldMapper {
     }
 
     public enum PreserveLeafArrays {
-        LOSSY(true, false, false),
-        EXACT(false, true, true);
-
-        final boolean sorted;
-        final boolean keepDuplicates;
-        final boolean keepNulls;
-
-        PreserveLeafArrays(boolean sorted, boolean keepDuplicates, boolean keepNulls) {
-            this.sorted = sorted;
-            this.keepDuplicates = keepDuplicates;
-            this.keepNulls = keepNulls;
-        }
+        LOSSY,
+        EXACT;
     }
 
     private static Builder builder(Mapper in) {

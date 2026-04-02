@@ -99,7 +99,7 @@ class FlattenedFieldParser {
                 currentName = parser.currentName();
             } else {
                 assert currentName != null;
-                parseFieldValue(context, token, path, currentName);
+                parseFieldValue(context, token, path, currentName, false);
             }
         }
     }
@@ -111,11 +111,12 @@ class FlattenedFieldParser {
             if (token == XContentParser.Token.END_ARRAY) {
                 return;
             }
-            parseFieldValue(context, token, path, currentName);
+            parseFieldValue(context, token, path, currentName, true);
         }
     }
 
-    private void parseFieldValue(Context context, XContentParser.Token token, ContentPath path, String currentName) throws IOException {
+    private void parseFieldValue(Context context, XContentParser.Token token, ContentPath path, String currentName, boolean parentIsArray)
+        throws IOException {
         XContentParser parser = context.parser();
         if (token == XContentParser.Token.START_OBJECT) {
             path.add(currentName);
@@ -126,7 +127,7 @@ class FlattenedFieldParser {
             parseArray(context, path, currentName);
         } else if (token.isValue()) {
             String value = parser.text();
-            addField(context, path, currentName, value);
+            addField(context, path, currentName, value, parentIsArray);
         } else if (token == XContentParser.Token.VALUE_NULL) {
             String key = path.pathAsText(currentName);
             if (key.contains(SEPARATOR)) {
@@ -138,8 +139,8 @@ class FlattenedFieldParser {
             if (mappedSubField != null) {
                 mappedSubField.parse(context.documentParserContext());
             } else if (nullValue != null) {
-                addField(context, path, currentName, nullValue);
-            } else if (preserveLeafArrays.keepNulls) {
+                addField(context, path, currentName, nullValue, parentIsArray);
+            } else if (parentIsArray && preserveLeafArrays == FlattenedFieldMapper.PreserveLeafArrays.EXACT) {
                 context.arrayContext.recordNull(key);
             }
         } else {
@@ -149,7 +150,7 @@ class FlattenedFieldParser {
         }
     }
 
-    private void addField(Context context, ContentPath path, String currentName, String value) throws IOException {
+    private void addField(Context context, ContentPath path, String currentName, String value, boolean parentIsArray) throws IOException {
         String key = path.pathAsText(currentName);
         if (key.contains(SEPARATOR)) {
             throw new IllegalArgumentException(
@@ -171,7 +172,7 @@ class FlattenedFieldParser {
         if (value.length() > ignoreAbove) {
             if (context.documentParserContext().mappingLookup().isSourceSynthetic()) {
                 context.documentParserContext.doc().add(new StoredField(keyedIgnoredValuesFieldFullPath, bytesKeyedValue));
-                if (preserveLeafArrays.sorted == false || preserveLeafArrays.keepDuplicates) {
+                if (parentIsArray && preserveLeafArrays == FlattenedFieldMapper.PreserveLeafArrays.EXACT) {
                     context.arrayContext.recordOffset(key, new BytesRef(value));
                 }
             }
@@ -222,7 +223,7 @@ class FlattenedFieldParser {
                 context.documentParserContext.doc().add(new SortedSetDocValuesField(keyedFieldFullPath, bytesKeyedValue));
             }
 
-            if (preserveLeafArrays.sorted == false || preserveLeafArrays.keepDuplicates) {
+            if (parentIsArray && preserveLeafArrays == FlattenedFieldMapper.PreserveLeafArrays.EXACT) {
                 context.arrayContext.recordOffset(key, bytesValue);
             }
 
