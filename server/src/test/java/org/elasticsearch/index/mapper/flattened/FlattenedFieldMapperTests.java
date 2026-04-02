@@ -1428,9 +1428,9 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
 
     private static class FlattenedFieldSyntheticSourceSupport implements SyntheticSourceSupport {
         private final Integer ignoreAbove = randomBoolean() ? randomIntBetween(4, 10) : null;
-        private final FlattenedFieldMapper.PreserveLeafArrays preserveLeafArrays = FlattenedFieldMapper.PreserveLeafArrays.EXACT; /*randomFrom(
-                                                                                                                                  FlattenedFieldMapper.PreserveLeafArrays.values()
-                                                                                                                                  );*/
+        private final FlattenedFieldMapper.PreserveLeafArrays preserveLeafArrays = randomFrom(
+            FlattenedFieldMapper.PreserveLeafArrays.values()
+        );
 
         @Override
         public SyntheticSourceExample example(int maxValues) throws IOException {
