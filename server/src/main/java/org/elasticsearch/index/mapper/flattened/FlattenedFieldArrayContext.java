@@ -12,15 +12,13 @@ package org.elasticsearch.index.mapper.flattened;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.elasticsearch.common.io.stream.ByteArrayStreamInput;
-import org.elasticsearch.index.fielddata.SortedBinaryDocValues;
+import org.elasticsearch.core.Tuple;
 import org.elasticsearch.index.mapper.DocumentParserContext;
 import org.elasticsearch.index.mapper.FieldArrayContext;
 import org.elasticsearch.index.mapper.MultiValuedBinaryDocValuesField;
 import org.elasticsearch.simdvec.ESVectorUtil;
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.TreeMap;
 
 public final class FlattenedFieldArrayContext extends FieldArrayContext {
     private final String offsetsFieldName;
@@ -44,8 +42,8 @@ public final class FlattenedFieldArrayContext extends FieldArrayContext {
             String fieldName = entry.getKey();
             var offsets = entry.getValue();
 
-            if (offsets.currentOffset() <= 1) {
-                // only 1 value, no need to record offsets
+            if (offsets.currentOffset() <= 1 && offsets.hasNulls() == false) {
+                // only 1 non-null value, no need to record offsets
                 continue;
             }
 
@@ -60,20 +58,17 @@ public final class FlattenedFieldArrayContext extends FieldArrayContext {
         }
     }
 
-    static Map<String, int[]> parseOffsetField(SortedBinaryDocValues docValues) throws IOException {
-        Map<String, int[]> offsets = new TreeMap<>();
-
-        try (ByteArrayStreamInput scratch = new ByteArrayStreamInput()) {
-            for (int i = 0; i < docValues.docValueCount(); i++) {
-                BytesRef keyedValue = docValues.nextValue();
-                int sep = ESVectorUtil.indexOf(keyedValue.bytes, keyedValue.offset, keyedValue.length, FlattenedFieldParser.SEPARATOR_BYTE);
-                BytesRef fieldName = new BytesRef(keyedValue.bytes, keyedValue.offset, sep);
-                scratch.reset(keyedValue.bytes, keyedValue.offset + sep + 1, keyedValue.length - sep - 1);
-
-                offsets.put(fieldName.utf8ToString(), FieldArrayContext.parseOffsetArray(scratch));
-            }
+    static Tuple<String, int[]> parseOffsetField(final BytesRef bytes) throws IOException {
+        if (bytes == null) {
+            return null;
         }
 
-        return offsets;
+        try (ByteArrayStreamInput scratch = new ByteArrayStreamInput()) {
+            int sep = ESVectorUtil.indexOf(bytes.bytes, bytes.offset, bytes.length, FlattenedFieldParser.SEPARATOR_BYTE);
+            BytesRef fieldName = new BytesRef(bytes.bytes, bytes.offset, sep);
+            scratch.reset(bytes.bytes, bytes.offset + sep + 1, bytes.length - sep - 1);
+
+            return new Tuple<>(fieldName.utf8ToString(), FieldArrayContext.parseOffsetArray(scratch));
+        }
     }
 }

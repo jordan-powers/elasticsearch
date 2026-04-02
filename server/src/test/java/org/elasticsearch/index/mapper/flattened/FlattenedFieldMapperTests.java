@@ -1684,6 +1684,19 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
         assertThat(syntheticSource(mapper, example), equalTo("{\"field\":{\"sub1\":{\"sub2\":[\"foo\",\"bar\",\"baz\",\"bat\"]}}}"));
     }
 
+    public void testPreserveLeafArraysExactWithAllNulls() throws IOException {
+        DocumentMapper mapper = createSytheticSourceMapperService(mapping(b -> {
+            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "EXACT").endObject();
+        })).documentMapper();
+
+        CheckedConsumer<XContentBuilder, IOException> example = b -> b.startObject("field")
+            .nullField("leaf")
+            .array("leaf2", null, null)
+            .endObject();
+
+        assertThat(syntheticSource(mapper, example), equalTo("{\"field\":{\"leaf\":null,\"leaf2\":[null,null]}}"));
+    }
+
     private static void flattenedPreserveLeafArrayExample(XContentBuilder b) throws IOException {
         b.startObject("field");
         {

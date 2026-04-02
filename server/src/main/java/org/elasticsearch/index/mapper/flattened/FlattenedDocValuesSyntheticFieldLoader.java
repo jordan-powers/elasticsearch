@@ -39,7 +39,7 @@ class FlattenedDocValuesSyntheticFieldLoader implements SourceLoader.SyntheticFi
 
     private FlattenedFieldMapper.PreserveLeafArrays preserveLeafArrays;
     private final String offsetsFieldName;
-    private SortedBinaryDocValues offsetsDocValues;
+    private DocValuesFieldValues offsetsDocValues;
 
     /**
      * Build a loader for flattened fields from either binary or sorted set doc values.
@@ -115,14 +115,14 @@ class FlattenedDocValuesSyntheticFieldLoader implements SourceLoader.SyntheticFi
             }
         }
 
-        if (docValues != NO_VALUES) {
-            var binaryDv = reader.getBinaryDocValues(offsetsFieldName);
-            if (binaryDv != null) {
-                offsetsDocValues = MultiValuedSortedBinaryDocValues.from(reader, offsetsFieldName, binaryDv);
-                allLoaders.add(offsetsDocValues::advanceExact);
-            } else {
-                offsetsDocValues = null;
-            }
+        var binaryDv = reader.getBinaryDocValues(offsetsFieldName);
+        if (binaryDv != null) {
+            SortedBinaryDocValues dv = MultiValuedSortedBinaryDocValues.from(reader, offsetsFieldName, binaryDv);
+            MultiValuedBinaryFieldValues loader = new MultiValuedBinaryFieldValues(dv);
+            offsetsDocValues = loader;
+            allLoaders.add(loader);
+        } else {
+            offsetsDocValues = NO_VALUES;
         }
 
         for (SourceLoader.SyntheticFieldLoader subFieldLoader : mappedSubFieldLoaders) {
@@ -153,7 +153,7 @@ class FlattenedDocValuesSyntheticFieldLoader implements SourceLoader.SyntheticFi
     }
 
     protected boolean hasFlattenedValues() {
-        return docValues.count() > 0 || ignoredValues.isEmpty() == false;
+        return docValues.count() > 0 || offsetsDocValues.count() > 0 || ignoredValues.isEmpty() == false;
     }
 
     private boolean hasPropertyValues() {
@@ -175,11 +175,7 @@ class FlattenedDocValuesSyntheticFieldLoader implements SourceLoader.SyntheticFi
             ignoredValues = List.of();
             sortedKeyedValues = new DocValuesWithIgnoredSortedKeyedValues(sortedKeyedValues, ignoredValuesSet);
         }
-        Map<String, int[]> offsets = null;
-        if (offsetsDocValues != null) {
-            offsets = FlattenedFieldArrayContext.parseOffsetField(offsetsDocValues);
-        }
-        return new FlattenedFieldSyntheticWriterHelper(sortedKeyedValues, offsets);
+        return new FlattenedFieldSyntheticWriterHelper(sortedKeyedValues, offsetsDocValues.getValues());
     }
 
     @Override

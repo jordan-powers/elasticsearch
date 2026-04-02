@@ -141,6 +141,10 @@ public class FieldArrayContext {
         public int currentOffset() {
             return currentOffset;
         }
+
+        public boolean hasNulls() {
+            return nullValueOffsets.isEmpty() == false;
+        }
     }
 
 }

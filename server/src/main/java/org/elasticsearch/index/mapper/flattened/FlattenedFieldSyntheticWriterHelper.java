@@ -10,13 +10,14 @@
 package org.elasticsearch.index.mapper.flattened;
 
 import org.apache.lucene.util.BytesRef;
+import org.elasticsearch.core.Tuple;
 import org.elasticsearch.xcontent.XContentBuilder;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -106,13 +107,13 @@ public class FlattenedFieldSyntheticWriterHelper {
     }
 
     private static class KeyValue {
-
-        public static final KeyValue EMPTY = new KeyValue(null, new Prefix(), null);
+        private final String fullPath;
         private final String value;
         private final Prefix prefix;
         private final String leaf;
 
-        private KeyValue(final String value, final Prefix prefix, final String leaf) {
+        private KeyValue(final String fullPath, final String value, final Prefix prefix, final String leaf) {
+            this.fullPath = fullPath;
             this.value = value;
             this.prefix = prefix;
             this.leaf = leaf;
@@ -122,17 +123,25 @@ public class FlattenedFieldSyntheticWriterHelper {
             this(
                 // Splitting with a negative limit includes trailing empty strings.
                 // This is needed in case the provide path has trailing path separators.
-                FlattenedFieldParser.extractKey(keyValue).utf8ToString().split(PATH_SEPARATOR_PATTERN, -1),
+                FlattenedFieldParser.extractKey(keyValue).utf8ToString(),
                 FlattenedFieldParser.extractValue(keyValue).utf8ToString()
             );
         }
 
-        private KeyValue(final String[] key, final String value) {
-            this(value, new Prefix(key), key[key.length - 1]);
+        private KeyValue(final String fullPath, final String value) {
+            this(fullPath, fullPath.split(PATH_SEPARATOR_PATTERN, -1), value);
+        }
+
+        private KeyValue(String fullPath, final String[] key, final String value) {
+            this(fullPath, value, new Prefix(key), key[key.length - 1]);
         }
 
         private static KeyValue fromBytesRef(final BytesRef keyValue) {
-            return keyValue == null ? EMPTY : new KeyValue(keyValue);
+            return keyValue == null ? null : new KeyValue(keyValue);
+        }
+
+        public String fullPath() {
+            return fullPath;
         }
 
         public String leaf() {
@@ -168,20 +177,129 @@ public class FlattenedFieldSyntheticWriterHelper {
         }
     }
 
+    private record KeyValueWithOffset(KeyValue key, List<String> values, int[] offsets) {}
+
+    private static class KeyValueProducer {
+        private final SortedKeyedValues sortedKeyedValues;
+        private final SortedKeyedValues sortedOffsetValues;
+
+        private KeyValue peekValue;
+        private Tuple<String, int[]> peekOffsets;
+
+        public KeyValueProducer(final SortedKeyedValues sortedKeyedValues, final SortedKeyedValues sortedOffsetValues) {
+            this.sortedKeyedValues = sortedKeyedValues;
+            this.sortedOffsetValues = sortedOffsetValues;
+
+            try {
+                peekValue = KeyValue.fromBytesRef(sortedKeyedValues.next());
+                peekOffsets = FlattenedFieldArrayContext.parseOffsetField(sortedOffsetValues.next());
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+
+        private Tuple<String, int[]> consumeOffsets() throws IOException {
+            var ret = peekOffsets;
+            peekOffsets = FlattenedFieldArrayContext.parseOffsetField(sortedOffsetValues.next());
+            return ret;
+        }
+
+        private KeyValue consumeValue(List<String> values) throws IOException {
+            var curr = peekValue;
+            var next = KeyValue.fromBytesRef(sortedKeyedValues.next());
+            values.add(curr.value());
+
+            // Gather all values with the same path into a list so they can be written to a field together.
+            while (next != null && curr.pathEquals(next)) {
+                curr = next;
+                next = KeyValue.fromBytesRef(sortedKeyedValues.next());
+                values.add(curr.value());
+            }
+
+            peekValue = next;
+            return curr;
+        }
+
+        public KeyValueWithOffset next() throws IOException {
+            if (peekValue == null && peekOffsets == null) {
+                return null;
+            }
+
+            if (peekValue == null) {
+                var offsets = consumeOffsets();
+                return new KeyValueWithOffset(new KeyValue(offsets.v1(), null), null, offsets.v2());
+            }
+
+            if (peekOffsets == null) {
+                List<String> values = new ArrayList<>();
+                var keyValue = consumeValue(values);
+                return new KeyValueWithOffset(keyValue, values, null);
+            }
+
+            int comparison = peekOffsets.v1().compareTo(peekValue.fullPath);
+            if (comparison < 0) {
+                var offsets = consumeOffsets();
+                return new KeyValueWithOffset(new KeyValue(offsets.v1(), null), null, offsets.v2());
+            } else if (comparison > 0) {
+                List<String> values = new ArrayList<>();
+                var keyValue = consumeValue(values);
+                return new KeyValueWithOffset(keyValue, values, null);
+            } else {
+                var offsets = consumeOffsets();
+                List<String> values = new ArrayList<>();
+                var keyValue = consumeValue(values);
+                assert offsets.v1().equals(keyValue.fullPath());
+                return new KeyValueWithOffset(keyValue, values, offsets.v2());
+            }
+        }
+    }
+
+    private static class Writer {
+        Prefix openObjects = new Prefix();
+        String lastScalarSingleLeaf = null;
+
+        public void write(XContentBuilder b, KeyValueWithOffset value, KeyValueWithOffset next) throws IOException {
+            // startPrefix is the suffix of the path that is within the currently open object, not including the leaf.
+            // For example, if the path is foo.bar.baz.qux, and openObjects is [foo], then startPrefix is bar.baz, and leaf is qux.
+            var startPrefix = value.key.prefix.diff(openObjects);
+            if (startPrefix.parts.isEmpty() == false && startPrefix.parts.getFirst().equals(lastScalarSingleLeaf)) {
+                // We have encountered a key with an object value, which already has a scalar value. Instead of creating an object for the
+                // key, we concatenate the key and all child keys going down to the current leaf into a single field name. For example:
+                // Assume the current object contains "foo": 10 and "foo.bar": 20. Since key-value pairs are sorted, "foo" is processed
+                // first. When writing the field "foo", `lastScalarSingleLeaf` is set to "foo" because it has a scalar value. Next, when
+                // processing "foo.bar", we check if `lastScalarSingleLeaf` ("foo") is a prefix of "foo.bar". Since it is, this indicates a
+                // conflict: a scalar value and an object share the same key ("foo"). To disambiguate, we create a concatenated key
+                // "foo.bar" with the value 20 in the current object, rather than creating a nested object as usual.
+                writeField(b, value.values, concatPath(startPrefix, value.key.leaf()), value.offsets);
+            } else {
+                // Since there is not an existing key in the object that is a prefix of the path, we can traverse down into the path
+                // and open objects. After opening all objects in the path, write out the field with only the current leaf as the key.
+                // Finally, save the current leaf in `lastScalarSingleLeaf`, in case there is a future object within the recently opened
+                // object which has the same key as the current leaf.
+                startObject(b, startPrefix.parts, openObjects.parts);
+                writeField(b, value.values, value.key.leaf(), value.offsets);
+                lastScalarSingleLeaf = value.key.leaf();
+            }
+
+            int numObjectsToEnd = Prefix.numObjectsToEnd(openObjects.parts, next == null ? List.of() : next.key.prefix.parts);
+            endObject(b, numObjectsToEnd, openObjects.parts);
+        }
+    }
+
     @FunctionalInterface
     public interface SortedKeyedValues {
         BytesRef next() throws IOException;
     }
 
     private final SortedKeyedValues sortedKeyedValues;
-    private final Map<String, int[]> offsets;
+    private final SortedKeyedValues sortedOffsetValues;
 
-    public FlattenedFieldSyntheticWriterHelper(final SortedKeyedValues sortedKeyedValues, Map<String, int[]> offsets) {
+    public FlattenedFieldSyntheticWriterHelper(final SortedKeyedValues sortedKeyedValues, SortedKeyedValues sortedOffsetValues) {
         this.sortedKeyedValues = sortedKeyedValues;
-        this.offsets = offsets;
+        this.sortedOffsetValues = sortedOffsetValues;
     }
 
-    private String concatPath(Prefix prefix, String leaf) {
+    private static String concatPath(Prefix prefix, String leaf) {
         StringBuilder builder = new StringBuilder();
         for (String part : prefix.parts) {
             builder.append(part).append(PATH_SEPARATOR);
@@ -191,58 +309,16 @@ public class FlattenedFieldSyntheticWriterHelper {
     }
 
     public void write(final XContentBuilder b) throws IOException {
-        KeyValue curr = new KeyValue(sortedKeyedValues.next());
-        final List<String> values = new ArrayList<>();
-        var openObjects = new Prefix();
-        String lastScalarSingleLeaf = null;
-        KeyValue next;
+        var producer = new KeyValueProducer(sortedKeyedValues, sortedOffsetValues);
+        var writer = new Writer();
 
-        while (curr.equals(KeyValue.EMPTY) == false) {
-            next = KeyValue.fromBytesRef(sortedKeyedValues.next());
-            values.add(curr.value());
-
-            // Gather all values with the same path into a list so they can be written to a field together.
-            while (curr.pathEquals(next)) {
-                curr = next;
-                next = KeyValue.fromBytesRef(sortedKeyedValues.next());
-                values.add(curr.value());
-            }
-
-            // startPrefix is the suffix of the path that is within the currently open object, not including the leaf.
-            // For example, if the path is foo.bar.baz.qux, and openObjects is [foo], then startPrefix is bar.baz, and leaf is qux.
-            var startPrefix = curr.prefix.diff(openObjects);
-            if (startPrefix.parts.isEmpty() == false && startPrefix.parts.getFirst().equals(lastScalarSingleLeaf)) {
-                // We have encountered a key with an object value, which already has a scalar value. Instead of creating an object for the
-                // key, we concatenate the key and all child keys going down to the current leaf into a single field name. For example:
-                // Assume the current object contains "foo": 10 and "foo.bar": 20. Since key-value pairs are sorted, "foo" is processed
-                // first. When writing the field "foo", `lastScalarSingleLeaf` is set to "foo" because it has a scalar value. Next, when
-                // processing "foo.bar", we check if `lastScalarSingleLeaf` ("foo") is a prefix of "foo.bar". Since it is, this indicates a
-                // conflict: a scalar value and an object share the same key ("foo"). To disambiguate, we create a concatenated key
-                // "foo.bar" with the value 20 in the current object, rather than creating a nested object as usual.
-                writeField(b, values, concatPath(startPrefix, curr.leaf()), getOffsets(curr));
-            } else {
-                // Since there is not an existing key in the object that is a prefix of the path, we can traverse down into the path
-                // and open objects. After opening all objects in the path, write out the field with only the current leaf as the key.
-                // Finally, save the current leaf in `lastScalarSingleLeaf`, in case there is a future object within the recently opened
-                // object which has the same key as the current leaf.
-                startObject(b, startPrefix.parts, openObjects.parts);
-                writeField(b, values, curr.leaf(), getOffsets(curr));
-                lastScalarSingleLeaf = curr.leaf();
-            }
-
-            int numObjectsToEnd = Prefix.numObjectsToEnd(openObjects.parts, next.prefix.parts);
-            endObject(b, numObjectsToEnd, openObjects.parts);
-
+        var curr = producer.next();
+        var next = producer.next();
+        while (curr != null) {
+            writer.write(b, curr, next);
             curr = next;
+            next = producer.next();
         }
-    }
-
-    private int[] getOffsets(KeyValue curr) {
-        if (offsets == null) {
-            return null;
-        }
-
-        return offsets.get(concatPath(curr.prefix, curr.leaf));
     }
 
     private static void endObject(final XContentBuilder b, int numObjectsToClose, List<String> openObjects) throws IOException {
@@ -260,6 +336,14 @@ public class FlattenedFieldSyntheticWriterHelper {
     }
 
     private static boolean checkAllValuesAreUsed(List<String> values, int[] offsetToOrd) {
+        if (values == null) {
+            for (int i = 0; i < offsetToOrd.length; i++) {
+                if (offsetToOrd[i] != -1) {
+                    return false;
+                }
+            }
+            return true;
+        }
         Set<Integer> offsets = Arrays.stream(offsetToOrd).boxed().collect(Collectors.toSet());
         for (int i = 0; i < values.size(); i++) {
             if (offsets.contains(i) == false) {
@@ -272,7 +356,11 @@ public class FlattenedFieldSyntheticWriterHelper {
     private static void writeField(XContentBuilder b, List<String> values, String leaf, int[] offsetToOrd) throws IOException {
         if (offsetToOrd != null) {
             assert checkAllValuesAreUsed(values, offsetToOrd);
-            b.startArray(leaf);
+            if (offsetToOrd.length == 1) {
+                b.field(leaf);
+            } else {
+                b.startArray(leaf);
+            }
             for (int offset : offsetToOrd) {
                 if (offset == -1) {
                     b.nullValue();
@@ -280,7 +368,9 @@ public class FlattenedFieldSyntheticWriterHelper {
                     b.value(values.get(offset));
                 }
             }
-            b.endArray();
+            if (offsetToOrd.length > 1) {
+                b.endArray();
+            }
         } else if (values.size() > 1) {
             b.field(leaf, values);
         } else {
@@ -292,6 +382,5 @@ public class FlattenedFieldSyntheticWriterHelper {
             // one value (array of size 1).
             b.field(leaf, values.getFirst());
         }
-        values.clear();
     }
 }
