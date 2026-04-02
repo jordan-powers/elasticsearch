@@ -43,7 +43,8 @@ final class RootFlattenedDocValuesBlockLoader implements BlockLoader {
         String name,
         Mapper.IgnoreAbove ignoreAbove,
         boolean usesBinaryDocValues,
-        List<SourceLoader.SyntheticFieldLoader> mappedSubFieldLoaders
+        List<SourceLoader.SyntheticFieldLoader> mappedSubFieldLoaders,
+        FlattenedFieldMapper.PreserveLeafArrays preserveLeafArrays
     ) {
         this.ignoreAbove = ignoreAbove;
         this.fieldLoader = new BlockFlattenedDocValuesSyntheticFieldLoader(
@@ -52,7 +53,8 @@ final class RootFlattenedDocValuesBlockLoader implements BlockLoader {
             ignoreAbove.valuesPotentiallyIgnored() ? name + KEYED_IGNORED_VALUES_FIELD_SUFFIX : null,
             null,
             usesBinaryDocValues,
-            mappedSubFieldLoaders
+            mappedSubFieldLoaders,
+            preserveLeafArrays
         );
         this.storedFieldLoaders = fieldLoader.storedFieldLoaders().toList();
     }
@@ -185,9 +187,9 @@ final class RootFlattenedDocValuesBlockLoader implements BlockLoader {
             String keyedIgnoredValuesFieldFullPath,
             String leafName,
             boolean usesBinaryDocValues,
-            List<SourceLoader.SyntheticFieldLoader> mappedSubFieldLoaders
+            List<SourceLoader.SyntheticFieldLoader> mappedSubFieldLoaders,
+            FlattenedFieldMapper.PreserveLeafArrays preserveLeafArrays
         ) {
-            // TODO: don't hard-code LOSSY here, instead pass in the actual set value
             super(
                 fieldFullPath,
                 keyedFieldFullPath,
@@ -195,7 +197,7 @@ final class RootFlattenedDocValuesBlockLoader implements BlockLoader {
                 leafName,
                 usesBinaryDocValues,
                 mappedSubFieldLoaders,
-                FlattenedFieldMapper.PreserveLeafArrays.LOSSY
+                preserveLeafArrays
             );
         }
 

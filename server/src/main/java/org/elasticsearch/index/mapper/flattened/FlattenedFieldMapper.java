@@ -102,6 +102,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -152,6 +153,11 @@ public final class FlattenedFieldMapper extends FieldMapper {
     public enum PreserveLeafArrays {
         LOSSY,
         EXACT;
+
+        @Override
+        public final String toString() {
+            return name().toLowerCase(Locale.ROOT);
+        }
     }
 
     private static Builder builder(Mapper in) {
@@ -372,7 +378,8 @@ public final class FlattenedFieldMapper extends FieldMapper {
                 hasRootDocValues,
                 nullValue.get(),
                 context.isSourceSynthetic(),
-                mappedSubFields
+                mappedSubFields,
+                preserveLeafArrays.get()
             );
             return new FlattenedFieldMapper(leafName(), ft, builderParams(this, context), this, mappedSubFields);
         }
@@ -1079,6 +1086,7 @@ public final class FlattenedFieldMapper extends FieldMapper {
         private final boolean isDimension;
         private final boolean isSyntheticSourceEnabled;
         private final Map<String, FieldMapper> mappedSubFields;
+        private final PreserveLeafArrays preserveLeafArrays;
 
         RootFlattenedFieldType(
             String name,
@@ -1105,7 +1113,8 @@ public final class FlattenedFieldMapper extends FieldMapper {
                 hasRootDocValues,
                 nullValue,
                 isSyntheticSourceEnabled,
-                Collections.emptyMap()
+                Collections.emptyMap(),
+                preserveLeafArrays
             );
         }
 
@@ -1121,7 +1130,8 @@ public final class FlattenedFieldMapper extends FieldMapper {
             boolean hasRootDocValues,
             String nullValue,
             boolean isSyntheticSourceEnabled,
-            Map<String, FieldMapper> mappedSubFields
+            Map<String, FieldMapper> mappedSubFields,
+            PreserveLeafArrays preserveLeafArrays
         ) {
             super(
                 name,
@@ -1140,6 +1150,7 @@ public final class FlattenedFieldMapper extends FieldMapper {
             this.isDimension = dimensions.isEmpty() == false;
             this.isSyntheticSourceEnabled = isSyntheticSourceEnabled;
             this.mappedSubFields = mappedSubFields;
+            this.preserveLeafArrays = preserveLeafArrays;
         }
 
         @Override
@@ -1166,7 +1177,13 @@ public final class FlattenedFieldMapper extends FieldMapper {
         @Override
         public BlockLoader blockLoader(BlockLoaderContext blContext) {
             if (hasDocValues() && (ignoreAbove.valuesPotentiallyIgnored() == false || isSyntheticSourceEnabled)) {
-                return new RootFlattenedDocValuesBlockLoader(name(), ignoreAbove, usesBinaryDocValues, toSubFieldLoaders(mappedSubFields));
+                return new RootFlattenedDocValuesBlockLoader(
+                    name(),
+                    ignoreAbove,
+                    usesBinaryDocValues,
+                    toSubFieldLoaders(mappedSubFields),
+                    preserveLeafArrays
+                );
             }
 
             SourceValueFetcher fetcher = new SourceValueFetcher(

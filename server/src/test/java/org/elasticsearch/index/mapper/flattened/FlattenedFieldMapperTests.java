@@ -101,7 +101,7 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
         checker.registerConflictCheck("null_value", b -> b.field("null_value", "foo"));
         checker.registerConflictCheck("similarity", b -> b.field("similarity", "boolean"));
         checker.registerConflictCheck("time_series_dimensions", b -> b.field("time_series_dimensions", List.of("one", "two")));
-        checker.registerConflictCheck("preserve_leaf_arrays", b -> b.field("preserve_leaf_arrays", "EXACT"));
+        checker.registerConflictCheck("preserve_leaf_arrays", b -> b.field("preserve_leaf_arrays", "exact"));
 
         checker.registerUpdateCheck(
             "eager_global_ordinals",
@@ -1650,7 +1650,7 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
 
     public void testPreserveLeafArraysExactSingleValue() throws IOException {
         DocumentMapper mapper = createSytheticSourceMapperService(mapping(b -> {
-            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "EXACT").endObject();
+            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "exact").endObject();
         })).documentMapper();
 
         CheckedConsumer<XContentBuilder, IOException> example = b -> b.startObject("field")
@@ -1663,7 +1663,7 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
 
     public void testPreserveLeafArraysExactWithObjectArrays() throws IOException {
         DocumentMapper mapper = createSytheticSourceMapperService(mapping(b -> {
-            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "EXACT").endObject();
+            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "exact").endObject();
         })).documentMapper();
 
         CheckedConsumer<XContentBuilder, IOException> example = b -> {
@@ -1687,7 +1687,7 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
 
     public void testPreserveLeafArraysExactWithAllNulls() throws IOException {
         DocumentMapper mapper = createSytheticSourceMapperService(mapping(b -> {
-            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "EXACT").endObject();
+            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "exact").endObject();
         })).documentMapper();
 
         CheckedConsumer<XContentBuilder, IOException> example = b -> b.startObject("field")
@@ -1716,7 +1716,7 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
 
     public void testSyntheticSourceSortedSetDocValuesWithPreserveLeafArraysLossy() throws IOException {
         DocumentMapper mapper = createSytheticSourceMapperService(mapping(b -> {
-            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "LOSSY").endObject();
+            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "lossy").endObject();
         })).documentMapper();
 
         assertThat(syntheticSource(mapper, FlattenedFieldMapperTests::flattenedPreserveLeafArrayExample), equalTo("""
@@ -1729,7 +1729,7 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
             .put(IndexSettings.USE_TIME_SERIES_DOC_VALUES_FORMAT_SETTING.getKey(), true)
             .build();
         DocumentMapper mapper = createMapperService(settings, mapping(b -> {
-            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "LOSSY").endObject();
+            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "lossy").endObject();
         })).documentMapper();
 
         assertThat(syntheticSource(mapper, FlattenedFieldMapperTests::flattenedPreserveLeafArrayExample), equalTo("""
@@ -1738,7 +1738,7 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
 
     public void testSyntheticSourceSortedSetDocValuesWithPreserveLeafArraysExact() throws IOException {
         DocumentMapper mapper = createSytheticSourceMapperService(mapping(b -> {
-            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "EXACT").endObject();
+            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "exact").endObject();
         })).documentMapper();
 
         assertThat(syntheticSource(mapper, FlattenedFieldMapperTests::flattenedPreserveLeafArrayExample), equalTo("""
@@ -1751,7 +1751,7 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
             .put(IndexSettings.USE_TIME_SERIES_DOC_VALUES_FORMAT_SETTING.getKey(), true)
             .build();
         DocumentMapper mapper = createMapperService(settings, mapping(b -> {
-            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "EXACT").endObject();
+            b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "exact").endObject();
         })).documentMapper();
 
         assertThat(syntheticSource(mapper, FlattenedFieldMapperTests::flattenedPreserveLeafArrayExample), equalTo("""
