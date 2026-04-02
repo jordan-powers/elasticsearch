@@ -10,7 +10,6 @@
 package org.elasticsearch.index.mapper.flattened;
 
 import org.apache.lucene.util.BytesRef;
-import org.elasticsearch.core.Tuple;
 import org.elasticsearch.xcontent.XContentBuilder;
 
 import java.io.IOException;
@@ -181,26 +180,26 @@ public class FlattenedFieldSyntheticWriterHelper {
 
     private static class KeyValueProducer {
         private final SortedKeyedValues sortedKeyedValues;
-        private final SortedKeyedValues sortedOffsetValues;
+        private final SortedOffsetValues sortedOffsetValues;
 
         private KeyValue peekValue;
-        private Tuple<String, int[]> peekOffsets;
+        private FlattenedFieldArrayContext.KeyedOffsetField peekOffsets;
 
-        public KeyValueProducer(final SortedKeyedValues sortedKeyedValues, final SortedKeyedValues sortedOffsetValues) {
+        public KeyValueProducer(final SortedKeyedValues sortedKeyedValues, final SortedOffsetValues sortedOffsetValues) {
             this.sortedKeyedValues = sortedKeyedValues;
             this.sortedOffsetValues = sortedOffsetValues;
 
             try {
                 peekValue = KeyValue.fromBytesRef(sortedKeyedValues.next());
-                peekOffsets = FlattenedFieldArrayContext.parseOffsetField(sortedOffsetValues.next());
+                peekOffsets = sortedOffsetValues.next();
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }
         }
 
-        private Tuple<String, int[]> consumeOffsets() throws IOException {
+        private FlattenedFieldArrayContext.KeyedOffsetField consumeOffsets() throws IOException {
             var ret = peekOffsets;
-            peekOffsets = FlattenedFieldArrayContext.parseOffsetField(sortedOffsetValues.next());
+            peekOffsets = sortedOffsetValues.next();
             return ret;
         }
 
@@ -226,8 +225,9 @@ public class FlattenedFieldSyntheticWriterHelper {
             }
 
             if (peekValue == null) {
+                // We have consumed all values but there are still offsets, indicating null values
                 var offsets = consumeOffsets();
-                return new KeyValueWithOffset(new KeyValue(offsets.v1(), null), null, offsets.v2());
+                return new KeyValueWithOffset(new KeyValue(offsets.fieldName(), null), null, offsets.offsets());
             }
 
             if (peekOffsets == null) {
@@ -236,10 +236,11 @@ public class FlattenedFieldSyntheticWriterHelper {
                 return new KeyValueWithOffset(keyValue, values, null);
             }
 
-            int comparison = peekOffsets.v1().compareTo(peekValue.fullPath);
+            int comparison = peekOffsets.fieldName().compareTo(peekValue.fullPath);
             if (comparison < 0) {
+                // Offset with no associated value, must be all null
                 var offsets = consumeOffsets();
-                return new KeyValueWithOffset(new KeyValue(offsets.v1(), null), null, offsets.v2());
+                return new KeyValueWithOffset(new KeyValue(offsets.fieldName(), null), null, offsets.offsets());
             } else if (comparison > 0) {
                 List<String> values = new ArrayList<>();
                 var keyValue = consumeValue(values);
@@ -248,8 +249,8 @@ public class FlattenedFieldSyntheticWriterHelper {
                 var offsets = consumeOffsets();
                 List<String> values = new ArrayList<>();
                 var keyValue = consumeValue(values);
-                assert offsets.v1().equals(keyValue.fullPath());
-                return new KeyValueWithOffset(keyValue, values, offsets.v2());
+                assert offsets.fieldName().equals(keyValue.fullPath());
+                return new KeyValueWithOffset(keyValue, values, offsets.offsets());
             }
         }
     }
@@ -291,10 +292,15 @@ public class FlattenedFieldSyntheticWriterHelper {
         BytesRef next() throws IOException;
     }
 
-    private final SortedKeyedValues sortedKeyedValues;
-    private final SortedKeyedValues sortedOffsetValues;
+    @FunctionalInterface
+    public interface SortedOffsetValues {
+        FlattenedFieldArrayContext.KeyedOffsetField next() throws IOException;
+    }
 
-    public FlattenedFieldSyntheticWriterHelper(final SortedKeyedValues sortedKeyedValues, SortedKeyedValues sortedOffsetValues) {
+    private final SortedKeyedValues sortedKeyedValues;
+    private final SortedOffsetValues sortedOffsetValues;
+
+    public FlattenedFieldSyntheticWriterHelper(final SortedKeyedValues sortedKeyedValues, final SortedOffsetValues sortedOffsetValues) {
         this.sortedKeyedValues = sortedKeyedValues;
         this.sortedOffsetValues = sortedOffsetValues;
     }

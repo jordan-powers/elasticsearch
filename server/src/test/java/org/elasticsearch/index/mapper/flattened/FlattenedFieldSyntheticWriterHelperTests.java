@@ -20,7 +20,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -37,7 +36,10 @@ public class FlattenedFieldSyntheticWriterHelperTests extends ESTestCase {
         byte[] bytes = ("test" + '\0' + "one").getBytes(StandardCharsets.UTF_8);
         when(dv.nextOrd()).thenReturn(0L);
         when(dv.lookupOrd(0L)).thenReturn(new BytesRef(bytes, 0, bytes.length));
-        FlattenedFieldSyntheticWriterHelper writer = new FlattenedFieldSyntheticWriterHelper(new SortedSetSortedKeyedValues(dv), null);
+        FlattenedFieldSyntheticWriterHelper writer = new FlattenedFieldSyntheticWriterHelper(
+            new SortedSetSortedKeyedValues(dv),
+            () -> null
+        );
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         XContentBuilder b = new XContentBuilder(XContentType.JSON.xContent(), baos);
 
@@ -213,11 +215,12 @@ public class FlattenedFieldSyntheticWriterHelperTests extends ESTestCase {
         // GIVEN
         final SortedSetDocValues dv = mock(SortedSetDocValues.class);
 
-        final Map<String, int[]> offsets = Map.of("a.x", new int[] { 1, 0, -1, 1, 3, 3, 2, -1 });
-        // TODO
+        final var offsets = List.of(new FlattenedFieldArrayContext.KeyedOffsetField("a.x", new int[] { 1, 0, -1, 1, 3, 3, 2, -1 }));
+        final var offsetsIterator = offsets.iterator();
+
         final FlattenedFieldSyntheticWriterHelper writer = new FlattenedFieldSyntheticWriterHelper(
             new SortedSetSortedKeyedValues(dv),
-            () -> null
+            () -> offsetsIterator.hasNext() ? offsetsIterator.next() : null
         );
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         final XContentBuilder builder = new XContentBuilder(XContentType.JSON.xContent(), baos);

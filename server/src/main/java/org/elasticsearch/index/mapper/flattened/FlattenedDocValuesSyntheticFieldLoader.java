@@ -175,7 +175,13 @@ class FlattenedDocValuesSyntheticFieldLoader implements SourceLoader.SyntheticFi
             ignoredValues = List.of();
             sortedKeyedValues = new DocValuesWithIgnoredSortedKeyedValues(sortedKeyedValues, ignoredValuesSet);
         }
-        return new FlattenedFieldSyntheticWriterHelper(sortedKeyedValues, offsetsDocValues.getValues());
+        final var offsetsValues = offsetsDocValues.getValues();
+        FlattenedFieldSyntheticWriterHelper.SortedOffsetValues keyedOffsetFieldSupplier = () -> {
+            var value = offsetsValues.next();
+            return value != null ? FlattenedFieldArrayContext.parseOffsetField(value) : null;
+        };
+
+        return new FlattenedFieldSyntheticWriterHelper(sortedKeyedValues, keyedOffsetFieldSupplier);
     }
 
     @Override

@@ -12,7 +12,6 @@ package org.elasticsearch.index.mapper.flattened;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.elasticsearch.common.io.stream.ByteArrayStreamInput;
-import org.elasticsearch.core.Tuple;
 import org.elasticsearch.index.mapper.DocumentParserContext;
 import org.elasticsearch.index.mapper.FieldArrayContext;
 import org.elasticsearch.index.mapper.MultiValuedBinaryDocValuesField;
@@ -58,7 +57,9 @@ public final class FlattenedFieldArrayContext extends FieldArrayContext {
         }
     }
 
-    static Tuple<String, int[]> parseOffsetField(final BytesRef bytes) throws IOException {
+    public record KeyedOffsetField(String fieldName, int[] offsets) {}
+
+    static KeyedOffsetField parseOffsetField(final BytesRef bytes) throws IOException {
         if (bytes == null) {
             return null;
         }
@@ -68,7 +69,7 @@ public final class FlattenedFieldArrayContext extends FieldArrayContext {
             BytesRef fieldName = new BytesRef(bytes.bytes, bytes.offset, sep);
             scratch.reset(bytes.bytes, bytes.offset + sep + 1, bytes.length - sep - 1);
 
-            return new Tuple<>(fieldName.utf8ToString(), FieldArrayContext.parseOffsetArray(scratch));
+            return new KeyedOffsetField(fieldName.utf8ToString(), FieldArrayContext.parseOffsetArray(scratch));
         }
     }
 }
