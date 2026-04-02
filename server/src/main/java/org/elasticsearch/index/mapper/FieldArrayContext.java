@@ -138,6 +138,9 @@ public class FieldArrayContext {
         final Map<Comparable<?>, List<Integer>> valueToOffsets = new TreeMap<>();
         final List<Integer> nullValueOffsets = new ArrayList<>(2);
 
+        public int currentOffset() {
+            return currentOffset;
+        }
     }
 
 }

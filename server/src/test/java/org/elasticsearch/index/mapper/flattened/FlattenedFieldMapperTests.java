@@ -1652,9 +1652,12 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
             b.startObject("field").field("type", "flattened").field("preserve_leaf_arrays", "EXACT").endObject();
         })).documentMapper();
 
-        CheckedConsumer<XContentBuilder, IOException> example = b -> b.startObject("field").field("leaf", "foo").endObject();
+        CheckedConsumer<XContentBuilder, IOException> example = b -> b.startObject("field")
+            .field("leaf", "foo")
+            .array("leaf2", "bar")
+            .endObject();
 
-        assertThat(syntheticSource(mapper, example), equalTo("{\"field\":{\"leaf\":\"foo\"}}"));
+        assertThat(syntheticSource(mapper, example), equalTo("{\"field\":{\"leaf\":\"foo\",\"leaf2\":\"bar\"}}"));
     }
 
     public void testPreserveLeafArraysExactWithObjectArrays() throws IOException {
@@ -1678,7 +1681,7 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
             b.endObject();
         };
 
-        assertThat(syntheticSource(mapper, example), equalTo("{\"field\":{\"sub1\":{\"sub2\":[\"bat\",\"bar\",\"baz\",\"foo\"]}}}"));
+        assertThat(syntheticSource(mapper, example), equalTo("{\"field\":{\"sub1\":{\"sub2\":[\"foo\",\"bar\",\"baz\",\"bat\"]}}}"));
     }
 
     private static void flattenedPreserveLeafArrayExample(XContentBuilder b) throws IOException {

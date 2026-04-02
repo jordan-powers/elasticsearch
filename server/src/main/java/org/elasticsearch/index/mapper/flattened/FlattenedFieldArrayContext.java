@@ -42,6 +42,12 @@ public final class FlattenedFieldArrayContext extends FieldArrayContext {
 
         for (var entry : offsetsPerField.entrySet()) {
             String fieldName = entry.getKey();
+            var offsets = entry.getValue();
+
+            if (offsets.currentOffset() <= 1) {
+                // only 1 value, no need to record offsets
+                continue;
+            }
 
             BytesRef fieldNamePrefix = new BytesRef(fieldName + FlattenedFieldParser.SEPARATOR);
             BytesRef offsetArray = FieldArrayContext.encodeOffsetArray(entry.getValue());
