@@ -101,6 +101,7 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
         checker.registerConflictCheck("null_value", b -> b.field("null_value", "foo"));
         checker.registerConflictCheck("similarity", b -> b.field("similarity", "boolean"));
         checker.registerConflictCheck("time_series_dimensions", b -> b.field("time_series_dimensions", List.of("one", "two")));
+        checker.registerConflictCheck("preserve_leaf_arrays", b -> b.field("preserve_leaf_arrays", "EXACT"));
 
         checker.registerUpdateCheck(
             "eager_global_ordinals",
