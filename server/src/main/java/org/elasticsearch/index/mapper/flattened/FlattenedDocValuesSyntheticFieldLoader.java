@@ -126,13 +126,15 @@ class FlattenedDocValuesSyntheticFieldLoader implements SourceLoader.SyntheticFi
             }
         }
 
-        var binaryDv = reader.getBinaryDocValues(offsetsFieldName);
-        if (binaryDv != null) {
-            SortedBinaryDocValues dv = MultiValuedSortedBinaryDocValues.from(reader, offsetsFieldName, binaryDv);
-            offsetsDocValues = new MultiValuedBinaryFlattenedDocValues(dv);
-            allLoaders.add(offsetsDocValues);
-        } else {
-            offsetsDocValues = NO_VALUES;
+        {
+            var binaryDv = reader.getBinaryDocValues(offsetsFieldName);
+            if (binaryDv != null) {
+                SortedBinaryDocValues dv = MultiValuedSortedBinaryDocValues.from(reader, offsetsFieldName, binaryDv);
+                offsetsDocValues = new MultiValuedBinaryFlattenedDocValues(dv);
+                allLoaders.add(offsetsDocValues);
+            } else {
+                offsetsDocValues = NO_VALUES;
+            }
         }
 
         for (SourceLoader.SyntheticFieldLoader subFieldLoader : mappedSubFieldLoaders) {
@@ -144,9 +146,9 @@ class FlattenedDocValuesSyntheticFieldLoader implements SourceLoader.SyntheticFi
 
         // Load ignored values for this field, if any
         if (storeIgnoredFieldsInBinaryDocValues && keyedIgnoredValuesFieldFullPath != null) {
-            var offsetsBinaryDv = reader.getBinaryDocValues(keyedIgnoredValuesFieldFullPath);
-            if (offsetsBinaryDv != null) {
-                SortedBinaryDocValues dv = MultiValuedSortedBinaryDocValues.from(reader, keyedIgnoredValuesFieldFullPath, offsetsBinaryDv);
+            var binaryDv = reader.getBinaryDocValues(keyedIgnoredValuesFieldFullPath);
+            if (binaryDv != null) {
+                SortedBinaryDocValues dv = MultiValuedSortedBinaryDocValues.from(reader, keyedIgnoredValuesFieldFullPath, binaryDv);
                 ignoredDocValues = new MultiValuedBinaryFlattenedDocValues(dv);
                 allLoaders.add(ignoredDocValues);
             } else {
