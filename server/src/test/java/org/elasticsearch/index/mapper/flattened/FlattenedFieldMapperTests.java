@@ -730,6 +730,33 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
         );
     }
 
+    public void testPreserveLeafArraysParameterDefaultValue() throws IOException {
+        {
+            DocumentMapper documentMapper = createMapperService(fieldMapping(this::minimalMapping)).documentMapper();
+            var mapper = (FlattenedFieldMapper) documentMapper.mappers().getMapper("field");
+            assertThat(mapper.preserveLeafArrays(), equalTo(FlattenedFieldMapper.PreserveLeafArrays.LOSSY));
+        }
+
+        {
+            DocumentMapper documentMapper = createMapperService(
+                Settings.builder().put(SourceFieldMapper.SYNTHETIC_SOURCE_KEEP_INDEX_SETTING.getKey(), "none").build(),
+                fieldMapping(this::minimalMapping)
+            ).documentMapper();
+            var mapper = (FlattenedFieldMapper) documentMapper.mappers().getMapper("field");
+            assertThat(mapper.preserveLeafArrays(), equalTo(FlattenedFieldMapper.PreserveLeafArrays.LOSSY));
+        }
+
+        {
+            DocumentMapper documentMapper = createMapperService(
+                Settings.builder().put(SourceFieldMapper.SYNTHETIC_SOURCE_KEEP_INDEX_SETTING.getKey(), "arrays").build(),
+                fieldMapping(this::minimalMapping)
+            ).documentMapper();
+            var mapper = (FlattenedFieldMapper) documentMapper.mappers().getMapper("field");
+            assertThat(mapper.preserveLeafArrays(), equalTo(FlattenedFieldMapper.PreserveLeafArrays.EXACT));
+        }
+
+    }
+
     public void testIgnoreAbove() throws IOException {
         // First verify the default behavior when ignore_above is not set.
         MapperService mapperService = createMapperService(fieldMapping(this::minimalMapping));

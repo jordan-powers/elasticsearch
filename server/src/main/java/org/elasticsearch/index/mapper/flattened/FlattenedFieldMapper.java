@@ -43,9 +43,7 @@ import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.xcontent.support.XContentMapValues;
 import org.elasticsearch.core.Nullable;
 import org.elasticsearch.features.NodeFeature;
-import org.elasticsearch.index.IndexMode;
 import org.elasticsearch.index.IndexSettings;
-import org.elasticsearch.index.IndexVersion;
 import org.elasticsearch.index.IndexVersions;
 import org.elasticsearch.index.analysis.NamedAnalyzer;
 import org.elasticsearch.index.fielddata.FieldData;
@@ -227,13 +225,7 @@ public final class FlattenedFieldMapper extends FieldMapper implements PassThrou
             }
         });
 
-        private final Parameter<PreserveLeafArrays> preserveLeafArrays = Parameter.enumParam(
-            "preserve_leaf_arrays",
-            false,
-            m -> builder(m).preserveLeafArrays.get(),
-            PreserveLeafArrays.LOSSY,
-            PreserveLeafArrays.class
-        );
+        private final Parameter<PreserveLeafArrays> preserveLeafArrays;
 
         private final Parameter<Map<String, String>> meta = Parameter.metaParam();
 
@@ -261,8 +253,7 @@ public final class FlattenedFieldMapper extends FieldMapper implements PassThrou
             })
             .setSerializerCheck((includeDefaults, isConfigured, v) -> v != null);
 
-        private final IndexMode indexMode;
-        private final IndexVersion indexCreatedVersion;
+        private final IndexSettings indexSettings;
         private final boolean usesBinaryDocValues;
         private final boolean isLegacyIndexWithRootValues;
         private final boolean forceStoreRootDocValues;
@@ -309,12 +300,11 @@ public final class FlattenedFieldMapper extends FieldMapper implements PassThrou
             return isLegacyIndexWithRootValues || indexed.get() || forceStoreRootDocValues;
         }
 
-        public Builder(final String name) {
+        public Builder(final String name, IndexSettings indexSettings) {
             this(
                 name,
-                IgnoreAbove.getIgnoreAboveDefaultValue(IndexMode.STANDARD, IndexVersion.current()),
-                IndexMode.STANDARD,
-                IndexVersion.current(),
+                IgnoreAbove.getIgnoreAboveDefaultValue(indexSettings.getMode(), indexSettings.getIndexVersionCreated()),
+                indexSettings,
                 false,
                 false,
                 false,
@@ -326,8 +316,7 @@ public final class FlattenedFieldMapper extends FieldMapper implements PassThrou
             this(
                 name,
                 IGNORE_ABOVE_SETTING.get(mappingParserContext.getSettings()),
-                mappingParserContext.getIndexSettings().getMode(),
-                mappingParserContext.indexVersionCreated(),
+                mappingParserContext.getIndexSettings(),
                 usesBinaryDocValues(mappingParserContext.getIndexSettings()),
                 mappingParserContext.indexVersionCreated().before(IndexVersions.FLATTENED_FIELD_NO_ROOT_DOC_VALUES),
                 IndexSettings.STORE_FLATTENED_ROOT_DOC_VALUES.get(mappingParserContext.getSettings()),
@@ -338,8 +327,7 @@ public final class FlattenedFieldMapper extends FieldMapper implements PassThrou
         private Builder(
             String name,
             int ignoreAboveDefault,
-            IndexMode indexMode,
-            IndexVersion indexCreatedVersion,
+            IndexSettings indexSettings,
             boolean usesBinaryDocValues,
             boolean isLegacyIndexWithRootValues,
             boolean forceStoreRootDocValues,
@@ -347,8 +335,7 @@ public final class FlattenedFieldMapper extends FieldMapper implements PassThrou
         ) {
             super(name);
             this.ignoreAboveDefault = ignoreAboveDefault;
-            this.indexMode = indexMode;
-            this.indexCreatedVersion = indexCreatedVersion;
+            this.indexSettings = indexSettings;
             this.ignoreAbove = Parameter.ignoreAboveParam(m -> builder(m).ignoreAbove.get(), ignoreAboveDefault);
             this.dimensions.precludesParameters(ignoreAbove);
             this.usesBinaryDocValues = usesBinaryDocValues;
@@ -356,6 +343,16 @@ public final class FlattenedFieldMapper extends FieldMapper implements PassThrou
             this.forceStoreRootDocValues = forceStoreRootDocValues;
             this.properties = propertiesParam(m -> builder(m).properties.getValue());
             this.storeIgnoredFieldsInBinaryDocValues = storeIgnoredFieldsInBinaryDocValues;
+
+            preserveLeafArrays = Parameter.enumParam(
+                "preserve_leaf_arrays",
+                false,
+                m -> builder(m).preserveLeafArrays.get(),
+                indexSettings.getValue(Mapper.SYNTHETIC_SOURCE_KEEP_INDEX_SETTING) == SourceKeepMode.NONE
+                    ? PreserveLeafArrays.LOSSY
+                    : PreserveLeafArrays.EXACT,
+                PreserveLeafArrays.class
+            );
         }
 
         public Builder passthrough(int priority) {
@@ -423,7 +420,7 @@ public final class FlattenedFieldMapper extends FieldMapper implements PassThrou
                 splitQueriesOnWhitespace.get(),
                 eagerGlobalOrdinals.get(),
                 dimensions.get(),
-                new IgnoreAbove(ignoreAbove.getValue(), indexMode, indexCreatedVersion),
+                new IgnoreAbove(ignoreAbove.getValue(), indexSettings.getMode(), indexSettings.getIndexVersionCreated()),
                 usesBinaryDocValues,
                 hasRootDocValues,
                 nullValue.get(),
@@ -1553,8 +1550,7 @@ public final class FlattenedFieldMapper extends FieldMapper implements PassThrou
         Builder b = new Builder(
             leafName(),
             builder.ignoreAboveDefault,
-            builder.indexMode,
-            builder.indexCreatedVersion,
+            builder.indexSettings,
             builder.usesBinaryDocValues,
             builder.isLegacyIndexWithRootValues,
             builder.forceStoreRootDocValues,
