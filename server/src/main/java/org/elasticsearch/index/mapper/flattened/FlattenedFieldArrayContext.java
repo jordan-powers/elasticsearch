@@ -22,12 +22,12 @@ import java.io.IOException;
 public final class FlattenedFieldArrayContext extends FieldArrayContext {
     private final String offsetsFieldName;
 
-    static String getOffsetsFieldName(String flattenedFieldName) {
+    static String getFlattenedOffsetsFieldName(String flattenedFieldName) {
         return flattenedFieldName + OFFSETS_FIELD_NAME_SUFFIX;
     }
 
     FlattenedFieldArrayContext(String flattenedFieldName) {
-        this.offsetsFieldName = getOffsetsFieldName(flattenedFieldName);
+        this.offsetsFieldName = getFlattenedOffsetsFieldName(flattenedFieldName);
     }
 
     void addToLuceneDocument(DocumentParserContext context) throws IOException {

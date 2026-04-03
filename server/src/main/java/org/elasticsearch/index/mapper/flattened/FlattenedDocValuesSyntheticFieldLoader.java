@@ -79,7 +79,7 @@ class FlattenedDocValuesSyntheticFieldLoader implements SourceLoader.SyntheticFi
         this.mappedSubFieldLoaders = mappedSubFieldLoaders;
         this.storeIgnoredFieldsInBinaryDocValues = storeIgnoredFieldsInBinaryDocValues;
         this.preserveLeafArrays = preserveLeafArrays;
-        this.offsetsFieldName = FlattenedFieldArrayContext.getOffsetsFieldName(fieldFullPath);
+        this.offsetsFieldName = FlattenedFieldArrayContext.getFlattenedOffsetsFieldName(fieldFullPath);
     }
 
     @Override
