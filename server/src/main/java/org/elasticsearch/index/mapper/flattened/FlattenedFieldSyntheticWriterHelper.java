@@ -178,6 +178,15 @@ public class FlattenedFieldSyntheticWriterHelper {
 
     private record KeyValueWithOffset(KeyValue key, List<String> values, int[] offsets) {}
 
+    /**
+     * Merges two lexicographically sorted sources (flattened key/value pairs from doc values and per-field array
+     * offset metadata) into a single sequence of {@link KeyValueWithOffset} records for synthetic field writing.
+     * <p>
+     * Doc values list each path once per stored value; consecutive entries with the same path are collapsed into one
+     * step with a list of values. When offset metadata is present for the same path, it is paired with those values so
+     * {@link FlattenedFieldSyntheticWriterHelper#writeField} can rebuild arrays including {@code null} slots. Paths that appear only in the offset stream
+     * (all-null arrays) are emitted with a null value list and non-null offsets alone.
+     */
     private static class KeyValueProducer {
         private final SortedKeyedValues sortedKeyedValues;
         private final SortedOffsetValues sortedOffsetValues;
@@ -255,7 +264,14 @@ public class FlattenedFieldSyntheticWriterHelper {
         }
     }
 
-    private static class Writer {
+    /**
+     * Stateful writer that turns a sorted stream of flattened key paths into nested {@link XContentBuilder} output.
+     * <p>
+     * It tracks which object scopes are currently open and, when a leaf key collides with a prior scalar at the same
+     * path prefix (e.g. {@code foo} then {@code foo.bar}), emits a single dotted field name instead of nesting so the
+     * reconstructed document matches flattened-field semantics.
+     */
+    private static class FlattenedPathXContentWriter {
         Prefix openObjects = new Prefix();
         String lastScalarSingleLeaf = null;
 
@@ -316,7 +332,7 @@ public class FlattenedFieldSyntheticWriterHelper {
 
     public void write(final XContentBuilder b) throws IOException {
         var producer = new KeyValueProducer(sortedKeyedValues, sortedOffsetValues);
-        var writer = new Writer();
+        var writer = new FlattenedPathXContentWriter();
 
         var curr = producer.next();
         var next = producer.next();
