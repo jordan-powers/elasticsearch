@@ -38,7 +38,7 @@ public class FlattenedFieldSyntheticWriterHelperTests extends ESTestCase {
         when(dv.lookupOrd(0L)).thenReturn(new BytesRef(bytes, 0, bytes.length));
         FlattenedFieldSyntheticWriterHelper writer = new FlattenedFieldSyntheticWriterHelper(
             new SortedSetSortedKeyedValues(dv),
-            () -> null
+            FlattenedFieldSyntheticWriterHelper.SortedOffsetValues.NONE
         );
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         XContentBuilder b = new XContentBuilder(XContentType.JSON.xContent(), baos);
@@ -58,7 +58,7 @@ public class FlattenedFieldSyntheticWriterHelperTests extends ESTestCase {
         final SortedSetDocValues dv = mock(SortedSetDocValues.class);
         final FlattenedFieldSyntheticWriterHelper writer = new FlattenedFieldSyntheticWriterHelper(
             new SortedSetSortedKeyedValues(dv),
-            () -> null
+            FlattenedFieldSyntheticWriterHelper.SortedOffsetValues.NONE
         );
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         final XContentBuilder builder = new XContentBuilder(XContentType.JSON.xContent(), baos);
@@ -88,7 +88,7 @@ public class FlattenedFieldSyntheticWriterHelperTests extends ESTestCase {
         final SortedSetDocValues dv = mock(SortedSetDocValues.class);
         final FlattenedFieldSyntheticWriterHelper writer = new FlattenedFieldSyntheticWriterHelper(
             new SortedSetSortedKeyedValues(dv),
-            () -> null
+            FlattenedFieldSyntheticWriterHelper.SortedOffsetValues.NONE
         );
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         final XContentBuilder builder = new XContentBuilder(XContentType.JSON.xContent(), baos);
@@ -123,7 +123,7 @@ public class FlattenedFieldSyntheticWriterHelperTests extends ESTestCase {
         final SortedSetDocValues dv = mock(SortedSetDocValues.class);
         final FlattenedFieldSyntheticWriterHelper writer = new FlattenedFieldSyntheticWriterHelper(
             new SortedSetSortedKeyedValues(dv),
-            () -> null
+            FlattenedFieldSyntheticWriterHelper.SortedOffsetValues.NONE
         );
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         final XContentBuilder builder = new XContentBuilder(XContentType.JSON.xContent(), baos);
@@ -153,7 +153,7 @@ public class FlattenedFieldSyntheticWriterHelperTests extends ESTestCase {
         final SortedSetDocValues dv = mock(SortedSetDocValues.class);
         final FlattenedFieldSyntheticWriterHelper writer = new FlattenedFieldSyntheticWriterHelper(
             new SortedSetSortedKeyedValues(dv),
-            () -> null
+            FlattenedFieldSyntheticWriterHelper.SortedOffsetValues.NONE
         );
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         final XContentBuilder builder = new XContentBuilder(XContentType.JSON.xContent(), baos);
@@ -183,7 +183,7 @@ public class FlattenedFieldSyntheticWriterHelperTests extends ESTestCase {
         final SortedSetDocValues dv = mock(SortedSetDocValues.class);
         final FlattenedFieldSyntheticWriterHelper writer = new FlattenedFieldSyntheticWriterHelper(
             new SortedSetSortedKeyedValues(dv),
-            () -> null
+            FlattenedFieldSyntheticWriterHelper.SortedOffsetValues.NONE
         );
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         final XContentBuilder builder = new XContentBuilder(XContentType.JSON.xContent(), baos);
@@ -250,7 +250,7 @@ public class FlattenedFieldSyntheticWriterHelperTests extends ESTestCase {
         final SortedSetDocValues dv = mock(SortedSetDocValues.class);
         final FlattenedFieldSyntheticWriterHelper writer = new FlattenedFieldSyntheticWriterHelper(
             new SortedSetSortedKeyedValues(dv),
-            () -> null
+            FlattenedFieldSyntheticWriterHelper.SortedOffsetValues.NONE
         );
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         final XContentBuilder builder = new XContentBuilder(XContentType.JSON.xContent(), baos);
@@ -280,7 +280,7 @@ public class FlattenedFieldSyntheticWriterHelperTests extends ESTestCase {
         final SortedSetDocValues dv = mock(SortedSetDocValues.class);
         final FlattenedFieldSyntheticWriterHelper writer = new FlattenedFieldSyntheticWriterHelper(
             new SortedSetSortedKeyedValues(dv),
-            () -> null
+            FlattenedFieldSyntheticWriterHelper.SortedOffsetValues.NONE
         );
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         final XContentBuilder builder = new XContentBuilder(XContentType.JSON.xContent(), baos);
@@ -310,7 +310,7 @@ public class FlattenedFieldSyntheticWriterHelperTests extends ESTestCase {
         final SortedSetDocValues dv = mock(SortedSetDocValues.class);
         final FlattenedFieldSyntheticWriterHelper writer = new FlattenedFieldSyntheticWriterHelper(
             new SortedSetSortedKeyedValues(dv),
-            () -> null
+            FlattenedFieldSyntheticWriterHelper.SortedOffsetValues.NONE
         );
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         final XContentBuilder builder = new XContentBuilder(XContentType.JSON.xContent(), baos);
@@ -337,7 +337,7 @@ public class FlattenedFieldSyntheticWriterHelperTests extends ESTestCase {
         final SortedSetDocValues dv = mock(SortedSetDocValues.class);
         final FlattenedFieldSyntheticWriterHelper writer = new FlattenedFieldSyntheticWriterHelper(
             new SortedSetSortedKeyedValues(dv),
-            () -> null
+            FlattenedFieldSyntheticWriterHelper.SortedOffsetValues.NONE
         );
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         final XContentBuilder builder = new XContentBuilder(XContentType.JSON.xContent(), baos);

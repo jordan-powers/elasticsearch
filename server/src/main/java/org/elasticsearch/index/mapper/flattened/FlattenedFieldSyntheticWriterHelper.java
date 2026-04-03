@@ -310,6 +310,8 @@ public class FlattenedFieldSyntheticWriterHelper {
 
     @FunctionalInterface
     public interface SortedOffsetValues {
+        SortedOffsetValues NONE = () -> null;
+
         FlattenedFieldArrayContext.KeyedOffsetField next() throws IOException;
     }
 
