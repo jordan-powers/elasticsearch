@@ -44,6 +44,7 @@ final class RootFlattenedDocValuesBlockLoader implements BlockLoader {
         Mapper.IgnoreAbove ignoreAbove,
         boolean usesBinaryDocValues,
         List<SourceLoader.SyntheticFieldLoader> mappedSubFieldLoaders,
+        boolean storeIgnoredFieldsInBinaryDocValues,
         FlattenedFieldMapper.PreserveLeafArrays preserveLeafArrays
     ) {
         this.ignoreAbove = ignoreAbove;
@@ -54,6 +55,7 @@ final class RootFlattenedDocValuesBlockLoader implements BlockLoader {
             null,
             usesBinaryDocValues,
             mappedSubFieldLoaders,
+            storeIgnoredFieldsInBinaryDocValues,
             preserveLeafArrays
         );
         this.storedFieldLoaders = fieldLoader.storedFieldLoaders().toList();
@@ -61,11 +63,10 @@ final class RootFlattenedDocValuesBlockLoader implements BlockLoader {
 
     @Override
     public StoredFieldsSpec rowStrideStoredFieldSpec() {
-        if (ignoreAbove.valuesPotentiallyIgnored()) {
-            return new StoredFieldsSpec(false, false, fieldLoader.storedFieldLoaders().map(Map.Entry::getKey).collect(Collectors.toSet()));
-        } else {
+        if (storedFieldLoaders.isEmpty()) {
             return StoredFieldsSpec.NO_REQUIREMENTS;
         }
+        return new StoredFieldsSpec(false, false, storedFieldLoaders.stream().map(Map.Entry::getKey).collect(Collectors.toSet()));
     }
 
     @Override
@@ -140,7 +141,7 @@ final class RootFlattenedDocValuesBlockLoader implements BlockLoader {
     @Override
     public IOFunction<CircuitBreaker, ColumnAtATimeReader> columnAtATimeReader(LeafReaderContext context) {
         // stored fields aren't supported when reading column-at-a-time
-        if (ignoreAbove.valuesPotentiallyIgnored()) {
+        if (storedFieldLoaders.isEmpty() == false) {
             return null;
         }
 
@@ -188,6 +189,7 @@ final class RootFlattenedDocValuesBlockLoader implements BlockLoader {
             String leafName,
             boolean usesBinaryDocValues,
             List<SourceLoader.SyntheticFieldLoader> mappedSubFieldLoaders,
+            boolean storeIgnoredFieldsInBinaryDocValues,
             FlattenedFieldMapper.PreserveLeafArrays preserveLeafArrays
         ) {
             super(
@@ -197,6 +199,7 @@ final class RootFlattenedDocValuesBlockLoader implements BlockLoader {
                 leafName,
                 usesBinaryDocValues,
                 mappedSubFieldLoaders,
+                storeIgnoredFieldsInBinaryDocValues,
                 preserveLeafArrays
             );
         }

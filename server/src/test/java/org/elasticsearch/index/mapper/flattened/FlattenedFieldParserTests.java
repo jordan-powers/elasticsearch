@@ -42,9 +42,10 @@ public class FlattenedFieldParserTests extends ESTestCase {
             Integer.MAX_VALUE,
             Integer.MAX_VALUE,
             null,
-            false,
+            true,
             true,
             Map.of(),
+            true,
             FlattenedFieldMapper.PreserveLeafArrays.LOSSY
         );
     }
@@ -312,6 +313,7 @@ public class FlattenedFieldParserTests extends ESTestCase {
             false,
             true,
             Map.of(),
+            true,
             FlattenedFieldMapper.PreserveLeafArrays.LOSSY
         );
 
@@ -340,6 +342,7 @@ public class FlattenedFieldParserTests extends ESTestCase {
             false,
             true,
             Map.of(),
+            true,
             FlattenedFieldMapper.PreserveLeafArrays.LOSSY
         );
 
@@ -360,9 +363,34 @@ public class FlattenedFieldParserTests extends ESTestCase {
             Integer.MAX_VALUE,
             10,
             null,
+            true,
+            true,
+            Map.of(),
+            true,
+            FlattenedFieldMapper.PreserveLeafArrays.LOSSY
+        );
+
+        TestDocumentParserContext context = new TestDocumentParserContext(xContentParser);
+        configuredParser.parse(context, null);
+        List<IndexableField> fields = context.doc().getFields();
+        assertEquals(0, fields.size());
+    }
+
+    public void testIgnoreAboveWithStoredFields() throws Exception {
+        String input = "{ \"key\": \"a longer field than usual\" }";
+        XContentParser xContentParser = createXContentParser(input);
+        FlattenedFieldParser configuredParser = new FlattenedFieldParser(
+            "field",
+            "field._keyed",
+            "field._keyed._ignored",
+            new FakeFieldType("field"),
+            Integer.MAX_VALUE,
+            10,
+            null,
             false,
             true,
             Map.of(),
+            false,
             FlattenedFieldMapper.PreserveLeafArrays.LOSSY
         );
 
@@ -389,9 +417,10 @@ public class FlattenedFieldParserTests extends ESTestCase {
             Integer.MAX_VALUE,
             Integer.MAX_VALUE,
             "placeholder",
-            false,
+            true,
             true,
             Map.of(),
+            true,
             FlattenedFieldMapper.PreserveLeafArrays.LOSSY
         );
 

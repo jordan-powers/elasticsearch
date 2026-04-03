@@ -45,6 +45,7 @@ class FlattenedFieldParser {
 
     private final boolean usesBinaryDocValues;
     private final boolean hasRootDocValues;
+    private final boolean storeIgnoredFieldsInBinaryDocValues;
 
     private final Map<String, FieldMapper> mappedSubFields;
 
@@ -61,6 +62,7 @@ class FlattenedFieldParser {
         boolean usesBinaryDocValues,
         boolean hasRootDocValues,
         Map<String, FieldMapper> mappedSubFields,
+        boolean storeIgnoredFieldsInBinaryDocValues,
         FlattenedFieldMapper.PreserveLeafArrays preserveLeafArrays
     ) {
         this.rootFieldFullPath = rootFieldFullPath;
@@ -73,6 +75,7 @@ class FlattenedFieldParser {
         this.usesBinaryDocValues = usesBinaryDocValues;
         this.hasRootDocValues = hasRootDocValues;
         this.mappedSubFields = mappedSubFields;
+        this.storeIgnoredFieldsInBinaryDocValues = storeIgnoredFieldsInBinaryDocValues;
         this.preserveLeafArrays = preserveLeafArrays;
     }
 
@@ -170,9 +173,20 @@ class FlattenedFieldParser {
 
         if (value.length() > ignoreAbove) {
             if (context.documentParserContext().mappingLookup().isSourceSynthetic()) {
-                context.documentParserContext.doc().add(new StoredField(keyedIgnoredValuesFieldFullPath, bytesKeyedValue));
                 if (preserveLeafArrays == FlattenedFieldMapper.PreserveLeafArrays.EXACT) {
                     context.arrayContext.recordOffset(key, new BytesRef(value));
+                }
+                if (storeIgnoredFieldsInBinaryDocValues) {
+                    MultiValuedBinaryDocValuesField field = (MultiValuedBinaryDocValuesField) context.documentParserContext.doc()
+                        .getByKey(keyedIgnoredValuesFieldFullPath);
+                    if (field == null) {
+                        // deduplicate and sort to match the behavior of other fields that use binary doc values for ignored fields
+                        field = new MultiValuedBinaryDocValuesField.IntegratedCount(keyedIgnoredValuesFieldFullPath, false);
+                        context.documentParserContext.doc().addWithKey(keyedIgnoredValuesFieldFullPath, field);
+                    }
+                    field.add(BytesRef.deepCopyOf(bytesKeyedValue));
+                } else {
+                    context.documentParserContext.doc().add(new StoredField(keyedIgnoredValuesFieldFullPath, bytesKeyedValue));
                 }
             }
             return;
