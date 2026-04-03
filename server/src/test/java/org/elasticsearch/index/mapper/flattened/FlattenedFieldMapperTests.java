@@ -715,7 +715,7 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
         })));
         assertThat(
             e.getMessage(),
-            equalTo("Failed to parse mapping: Unknown value [bogus] for field [preserve_leaf_arrays] - accepted values are [LOSSY, EXACT]")
+            equalTo("Failed to parse mapping: Unknown value [bogus] for field [preserve_leaf_arrays] - accepted values are [lossy, exact]")
         );
     }
 
@@ -1452,7 +1452,7 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
         }
 
         private Map<String, Object> randomObject() {
-            var maxDepth = 1; // randomIntBetween(1, 3);
+            var maxDepth = randomIntBetween(1, 3);
 
             final Map<String, Object> map = new HashMap<>();
             randomMapExample(map, 0, maxDepth, preserveLeafArrays);
