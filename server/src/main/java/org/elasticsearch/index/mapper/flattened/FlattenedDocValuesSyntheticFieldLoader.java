@@ -165,7 +165,7 @@ class FlattenedDocValuesSyntheticFieldLoader implements SourceLoader.SyntheticFi
         return false;
     }
 
-    protected FlattenedFieldSyntheticWriterHelper getWriter() throws IOException {
+    protected FlattenedFieldSyntheticWriterHelper getWriter() {
         FlattenedFieldSyntheticWriterHelper.SortedKeyedValues sortedKeyedValues = docValues.getValues();
         if (ignoredValues.isEmpty() == false) {
             var ignoredValuesSet = new TreeSet<BytesRef>();
