@@ -142,7 +142,7 @@ class LastValueFieldDownsampler extends AbstractFieldDownsampler<FormattedDocVal
                     } else {
                         return null;
                     }
-                }, null);
+                }, () -> null);
                 helper.write(builder);
                 builder.endObject();
             }
