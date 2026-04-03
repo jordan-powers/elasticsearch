@@ -184,8 +184,8 @@ public class FlattenedFieldSyntheticWriterHelper {
      * <p>
      * Doc values list each path once per stored value; consecutive entries with the same path are collapsed into one
      * step with a list of values. When offset metadata is present for the same path, it is paired with those values so
-     * {@link FlattenedFieldSyntheticWriterHelper#writeField} can rebuild arrays including {@code null} slots. Paths that appear only in the offset stream
-     * (all-null arrays) are emitted with a null value list and non-null offsets alone.
+     * {@link FlattenedFieldSyntheticWriterHelper#writeField} can rebuild arrays including {@code null} slots.
+     * Paths that appear only in the offset stream (all-null arrays) are emitted with a null value list and non-null offsets alone.
      */
     private static class KeyValueProducer {
         private final SortedKeyedValues sortedKeyedValues;
@@ -194,7 +194,7 @@ public class FlattenedFieldSyntheticWriterHelper {
         private KeyValue peekValue;
         private FlattenedFieldArrayContext.KeyedOffsetField peekOffsets;
 
-        public KeyValueProducer(final SortedKeyedValues sortedKeyedValues, final SortedOffsetValues sortedOffsetValues) {
+        KeyValueProducer(final SortedKeyedValues sortedKeyedValues, final SortedOffsetValues sortedOffsetValues) {
             this.sortedKeyedValues = sortedKeyedValues;
             this.sortedOffsetValues = sortedOffsetValues;
 
