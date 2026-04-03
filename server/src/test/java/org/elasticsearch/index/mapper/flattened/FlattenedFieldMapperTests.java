@@ -1448,7 +1448,6 @@ public class FlattenedFieldMapperTests extends MapperTestCase {
 
                     while (stringSet.size() < size) {
                         stringSet.add(String.valueOf(randomIntBetween(10_000, 2_000_000)));
-                        stringSet.add(String.valueOf(randomIntBetween(10_000, 2_000_000)));
                     }
                     final List<String> randomList = new ArrayList<>(stringSet);
                     if (preserveLeafArrays == FlattenedFieldMapper.PreserveLeafArrays.LOSSY) {
