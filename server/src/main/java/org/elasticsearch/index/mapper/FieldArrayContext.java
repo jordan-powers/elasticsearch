@@ -55,6 +55,13 @@ public class FieldArrayContext {
         }
     }
 
+    /**
+     * Encodes per-array offsets (in document parsing order) recording which distinct value occupies each slot in a recorded array.
+     * <p>
+     * The array takes the form {@code [slot count][ordinal 0][ordinal 1]...}, where {@code slot count} is the number of leaf positions
+     * (one per indexed array element, including {@code null}s) and each following ordinal is either a non-negative index into the
+     * per-document sorted set of array values, or {@code -1} when that slot is {@code null}. Decoding uses {@link #parseOffsetArray}.
+     */
     protected static BytesRef encodeOffsetArray(Offsets offset) throws IOException {
         int currentOrd = 0;
         // This array allows to retain the original ordering of elements in leaf arrays and retain duplicates.

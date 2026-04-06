@@ -30,29 +30,42 @@ public final class FlattenedFieldArrayContext extends FieldArrayContext {
         this.offsetsFieldName = getFlattenedOffsetsFieldName(flattenedFieldName);
     }
 
+    /**
+     * Returns a single binary value representing the encoded fieldName and offsets: UTF-8 {@code fieldName}, a {@code '\0'} delimiter,
+     * then the offset-array payload from {@link FieldArrayContext#encodeOffsetArray}. Returns {@code null} when only one non-null value
+     * exists and there are no null slots, so no offsets are stored.
+     */
+    private static BytesRef encodeKeyedOffsetsArray(String fieldName, Offsets offsets) throws IOException {
+        if (offsets.currentOffset() <= 1 && offsets.hasNulls() == false) {
+            // only 1 non-null value, no need to record offsets
+            return null;
+        }
+
+        BytesRef fieldNamePrefix = new BytesRef(fieldName + FlattenedFieldParser.SEPARATOR);
+        BytesRef offsetArray = FieldArrayContext.encodeOffsetArray(offsets);
+
+        BytesRefBuilder valueBuilder = new BytesRefBuilder();
+        valueBuilder.append(fieldNamePrefix);
+        valueBuilder.append(offsetArray);
+
+        return valueBuilder.get();
+    }
+
     @Override
     public void addToLuceneDocument(DocumentParserContext context) throws IOException {
         for (var entry : offsetsPerField.entrySet()) {
             String fieldName = entry.getKey();
             var offsets = entry.getValue();
 
-            if (offsets.currentOffset() <= 1 && offsets.hasNulls() == false) {
-                // only 1 non-null value, no need to record offsets
-                continue;
+            BytesRef encoded = encodeKeyedOffsetsArray(fieldName, offsets);
+
+            if (encoded != null) {
+                MultiValuedBinaryDocValuesField.SeparateCount.addToSeparateCountMultiBinaryFieldInDoc(
+                    context.doc(),
+                    offsetsFieldName,
+                    encoded
+                );
             }
-
-            BytesRef fieldNamePrefix = new BytesRef(fieldName + FlattenedFieldParser.SEPARATOR);
-            BytesRef offsetArray = FieldArrayContext.encodeOffsetArray(entry.getValue());
-
-            BytesRefBuilder valueBuilder = new BytesRefBuilder();
-            valueBuilder.append(fieldNamePrefix);
-            valueBuilder.append(offsetArray);
-
-            MultiValuedBinaryDocValuesField.SeparateCount.addToSeparateCountMultiBinaryFieldInDoc(
-                context.doc(),
-                offsetsFieldName,
-                valueBuilder.get()
-            );
         }
     }
 
