@@ -46,7 +46,7 @@ public class FieldArrayContext {
         offsetsPerField.computeIfAbsent(field, k -> new Offsets());
     }
 
-    void addToLuceneDocument(DocumentParserContext context) throws IOException {
+    public void addToLuceneDocument(DocumentParserContext context) throws IOException {
         for (var entry : offsetsPerField.entrySet()) {
             var fieldName = entry.getKey();
             var offset = entry.getValue();

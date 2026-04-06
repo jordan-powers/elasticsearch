@@ -30,7 +30,8 @@ public final class FlattenedFieldArrayContext extends FieldArrayContext {
         this.offsetsFieldName = getFlattenedOffsetsFieldName(flattenedFieldName);
     }
 
-    void addToLuceneDocument(DocumentParserContext context) throws IOException {
+    @Override
+    public void addToLuceneDocument(DocumentParserContext context) throws IOException {
         var field = (MultiValuedBinaryDocValuesField.IntegratedCount) context.doc().getField(offsetsFieldName);
         if (field == null) {
             field = new MultiValuedBinaryDocValuesField.IntegratedCount(offsetsFieldName, false);
