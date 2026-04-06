@@ -32,12 +32,6 @@ public final class FlattenedFieldArrayContext extends FieldArrayContext {
 
     @Override
     public void addToLuceneDocument(DocumentParserContext context) throws IOException {
-        var field = (MultiValuedBinaryDocValuesField.IntegratedCount) context.doc().getField(offsetsFieldName);
-        if (field == null) {
-            field = new MultiValuedBinaryDocValuesField.IntegratedCount(offsetsFieldName, false);
-            context.doc().addWithKey(offsetsFieldName, field);
-        }
-
         for (var entry : offsetsPerField.entrySet()) {
             String fieldName = entry.getKey();
             var offsets = entry.getValue();
@@ -54,7 +48,11 @@ public final class FlattenedFieldArrayContext extends FieldArrayContext {
             valueBuilder.append(fieldNamePrefix);
             valueBuilder.append(offsetArray);
 
-            field.add(valueBuilder.get());
+            MultiValuedBinaryDocValuesField.SeparateCount.addToSeparateCountMultiBinaryFieldInDoc(
+                context.doc(),
+                offsetsFieldName,
+                valueBuilder.get()
+            );
         }
     }
 
