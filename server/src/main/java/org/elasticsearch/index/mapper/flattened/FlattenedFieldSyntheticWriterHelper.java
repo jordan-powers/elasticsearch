@@ -237,6 +237,7 @@ public class FlattenedFieldSyntheticWriterHelper {
             }
 
             if (peekOffsets == null) {
+                // We have consumed all offsets and only single-valued values remain
                 List<String> values = new ArrayList<>();
                 var keyValue = consumeValue(values);
                 return new KeyValueWithOffset(keyValue, values, null);
@@ -244,14 +245,17 @@ public class FlattenedFieldSyntheticWriterHelper {
 
             int comparison = peekOffsets.fieldName().compareTo(peekValue.fullPath);
             if (comparison < 0) {
+                // Current offset is not associated with current value, and the current offset is lexicographically first
                 // Offset with no associated value, must be all null
                 var offsets = consumeOffsets();
                 return new KeyValueWithOffset(new KeyValue(offsets.fieldName(), null), null, offsets.offsets());
             } else if (comparison > 0) {
+                // Current offset is not associated with current value, and the current value is lexicographically first
                 List<String> values = new ArrayList<>();
                 var keyValue = consumeValue(values);
                 return new KeyValueWithOffset(keyValue, values, null);
             } else {
+                // Current offset is associated with current value
                 var offsets = consumeOffsets();
                 List<String> values = new ArrayList<>();
                 var keyValue = consumeValue(values);
@@ -356,18 +360,23 @@ public class FlattenedFieldSyntheticWriterHelper {
         }
     }
 
-    private static boolean checkAllValuesAreUsed(List<String> values, int[] offsetToOrd) {
+    private static boolean sanityCheckOffsetsMatchValues(List<String> values, int[] offsetToOrd) {
         if (values == null) {
+            // no values, offsets must be all-null
             for (int i = 0; i < offsetToOrd.length; i++) {
+                // -1 represents a null value. See FieldArrayContext#encodeOffsetArray
                 if (offsetToOrd[i] != -1) {
                     return false;
                 }
             }
             return true;
         }
+
         Set<Integer> offsets = Arrays.stream(offsetToOrd).boxed().collect(Collectors.toSet());
         for (int i = 0; i < values.size(); i++) {
             if (offsets.contains(i) == false) {
+                // We found a value that is not referenced by any offset, which should not be possible.
+                // This usually indicates we are using the wrong offsets array for the values.
                 return false;
             }
         }
@@ -376,7 +385,7 @@ public class FlattenedFieldSyntheticWriterHelper {
 
     private static void writeField(XContentBuilder b, List<String> values, String leaf, int[] offsetToOrd) throws IOException {
         if (offsetToOrd != null) {
-            assert checkAllValuesAreUsed(values, offsetToOrd);
+            assert sanityCheckOffsetsMatchValues(values, offsetToOrd);
             if (offsetToOrd.length == 1) {
                 b.field(leaf);
             } else {
