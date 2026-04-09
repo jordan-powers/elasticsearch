@@ -45,7 +45,6 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.Assume.assumeTrue;
 
 public class DynamicTemplatesTests extends MapperServiceTestCase {
 
@@ -2139,7 +2138,8 @@ public class DynamicTemplatesTests extends MapperServiceTestCase {
 
     /**
      * Exercises a dynamic template that maps matching names as runtime fields: {@code twothing} becomes a runtime {@code keyword},
-     * while {@code one_xyz} is excluded by {@code unmatch} and falls through to default dynamic mapping ({@code text} with {@code .keyword}).
+     * while {@code one_xyz} is excluded by {@code unmatch} and falls through to default dynamic mapping
+     * ({@code text} with {@code .keyword}).
      */
     public void testMatchAndUnmatchWithArrayOfFieldNamesAsRuntimeFields() throws IOException {
         String mapping = """
