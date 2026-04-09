@@ -20,6 +20,13 @@ setup:
           new_field: "hello"
 
   - do:
+      indices.get_settings:
+        index: test_dynamic_strings_default
+        include_defaults: true
+
+  - match: { test_dynamic_strings_default.defaults.index.mapping.dynamic_strings.auto_keyword: "true" }
+
+  - do:
       indices.get_mapping:
         index: test_dynamic_strings_default
 
@@ -45,8 +52,21 @@ setup:
           new_field: "hello"
 
   - do:
+      indices.get_settings:
+        index: test_dynamic_strings_default
+        include_defaults: true
+
+  - match: { test_dynamic_strings_default.defaults.index.mapping.dynamic_strings.auto_keyword: "true" }
+
+  - do:
       indices.get_mapping:
         index: test_dynamic_strings_no_kw
 
   - match: { test_dynamic_strings_no_kw.mappings.properties.new_field.type: text }
   - is_false: test_dynamic_strings_no_kw.mappings.properties.new_field.fields
+
+  - do:
+      indices.get_settings:
+        index: test_dynamic_strings_no_kw
+
+  - match: { test_dynamic_strings_no_kw.settings.index.mapping.dynamic_strings.auto_keyword: "false" }
