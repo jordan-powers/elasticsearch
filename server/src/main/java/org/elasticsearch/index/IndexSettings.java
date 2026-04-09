@@ -30,6 +30,7 @@ import org.elasticsearch.core.Booleans;
 import org.elasticsearch.core.TimeValue;
 import org.elasticsearch.index.codec.CodecService;
 import org.elasticsearch.index.codec.bloomfilter.SyntheticIdBloomFilterSettings;
+import org.elasticsearch.index.mapper.FieldMapper;
 import org.elasticsearch.index.mapper.IgnoredSourceFieldMapper;
 import org.elasticsearch.index.mapper.Mapper;
 import org.elasticsearch.index.mapper.SeqNoFieldMapper;
@@ -1094,6 +1095,13 @@ public final class IndexSettings {
     public static final Setting<Boolean> DYNAMIC_STRINGS_AUTO_KEYWORD = Setting.boolSetting(
         "index.mapping.dynamic_strings.auto_keyword",
         true,
+        value -> {
+            if (value == false && FieldMapper.DocValuesParameter.EXTENDED_DOC_VALUES_PARAMS_FF.isEnabled() == false) {
+                throw new IllegalArgumentException(
+                    "[index.mapping.dynamic_strings.auto_keyword] can only be disabled when the extended_doc_values_options feature flag is enabled"
+                );
+            }
+        },
         Property.Dynamic,
         Property.IndexScope
     );
