@@ -1,0 +1,52 @@
+---
+setup:
+  - requires:
+      cluster_features: [ "ingest.dynamic_strings.auto_keyword_setting" ]
+      reason: "index.mapping.dynamic_strings.auto_keyword is gated by this feature"
+
+---
+"Dynamic string defaults to text with keyword subfield":
+  - do:
+      indices.create:
+        index: test_dynamic_strings_default
+        body:
+          mappings: {}
+
+  - do:
+      index:
+        index: test_dynamic_strings_default
+        id: "1"
+        body:
+          new_field: "hello"
+
+  - do:
+      indices.get_mapping:
+        index: test_dynamic_strings_default
+
+  - match: { test_dynamic_strings_default.mappings.properties.new_field.type: text }
+  - match: { test_dynamic_strings_default.mappings.properties.new_field.fields.keyword.type: keyword }
+  - match: { test_dynamic_strings_default.mappings.properties.new_field.fields.keyword.ignore_above: 256 }
+
+---
+"Dynamic string without auto keyword omits keyword subfield":
+  - do:
+      indices.create:
+        index: test_dynamic_strings_no_kw
+        body:
+          settings:
+            index.mapping.dynamic_strings.auto_keyword: false
+          mappings: {}
+
+  - do:
+      index:
+        index: test_dynamic_strings_no_kw
+        id: "1"
+        body:
+          new_field: "hello"
+
+  - do:
+      indices.get_mapping:
+        index: test_dynamic_strings_no_kw
+
+  - match: { test_dynamic_strings_no_kw.mappings.properties.new_field.type: text }
+  - is_false: test_dynamic_strings_no_kw.mappings.properties.new_field.fields
