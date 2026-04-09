@@ -1098,7 +1098,8 @@ public final class IndexSettings {
         value -> {
             if (value == false && FieldMapper.DocValuesParameter.EXTENDED_DOC_VALUES_PARAMS_FF.isEnabled() == false) {
                 throw new IllegalArgumentException(
-                    "[index.mapping.dynamic_strings.auto_keyword] can only be disabled when the extended_doc_values_options feature flag is enabled"
+                    "[index.mapping.dynamic_strings.auto_keyword] can only be disabled when the"
+                        + " extended_doc_values_options feature flag is enabled"
                 );
             }
         },
