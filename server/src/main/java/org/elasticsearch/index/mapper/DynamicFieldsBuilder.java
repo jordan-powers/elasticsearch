@@ -329,12 +329,25 @@ final class DynamicFieldsBuilder {
                 return createDynamicField(new KeywordFieldMapper.Builder(name, context.indexSettings()), context, mapperBuilderContext);
             } else {
                 var indexSettings = context.indexSettings();
-                return createDynamicField(
-                    new TextFieldMapper.Builder(name, indexSettings, context.indexAnalyzers(), false).addMultiField(
-                        new KeywordFieldMapper.Builder("keyword", context.indexSettings(), true).ignoreAbove(256)
-                    ),
-                    context
-                );
+                if (indexSettings.getDynamicStringsAutoKeyword()) {
+                    return createDynamicField(
+                        new TextFieldMapper.Builder(name, indexSettings, context.indexAnalyzers(), false).addMultiField(
+                            new KeywordFieldMapper.Builder("keyword", context.indexSettings(), true).ignoreAbove(256)
+                        ),
+                        context
+                    );
+                } else {
+                    return createDynamicField(
+                        new TextFieldMapper.Builder(name, indexSettings, context.indexAnalyzers(), false).docValues(
+                            new FieldMapper.DocValuesParameter.Values(
+                                true,
+                                FieldMapper.DocValuesParameter.Values.Cardinality.HIGH,
+                                FieldMapper.DocValuesParameter.Values.MultiValue.ARRAYS
+                            )
+                        ),
+                        context
+                    );
+                }
             }
         }
 

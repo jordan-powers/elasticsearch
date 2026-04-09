@@ -1091,6 +1091,13 @@ public final class IndexSettings {
         Property.Final
     );
 
+    public static final Setting<Boolean> DYNAMIC_STRINGS_AUTO_KEYWORD = Setting.boolSetting(
+        "index.mapping.dynamic_strings.auto_keyword",
+        true,
+        Property.Dynamic,
+        Property.IndexScope
+    );
+
     private final Index index;
     private final IndexVersion version;
     private final Logger logger;
@@ -1178,6 +1185,7 @@ public final class IndexSettings {
     private volatile boolean requestCacheEnabled;
     private volatile boolean skipIgnoredSourceWrite;
     private volatile boolean skipIgnoredSourceRead;
+    private volatile boolean dynamicStringsAutoKeyword;
     private final SourceFieldMapper.Mode indexMappingSourceMode;
     private final boolean recoverySourceEnabled;
     private final boolean recoverySourceSyntheticEnabled;
@@ -1434,6 +1442,7 @@ public final class IndexSettings {
             }
         }
         disableSequenceNumbers = DISABLE_SEQUENCE_NUMBERS.get(settings);
+        dynamicStringsAutoKeyword = DYNAMIC_STRINGS_AUTO_KEYWORD.get(settings);
         scopedSettings.addSettingsUpdateConsumer(
             MergePolicyConfig.INDEX_COMPOUND_FORMAT_SETTING,
             mergePolicyConfig::setCompoundFormatThreshold
@@ -1528,6 +1537,7 @@ public final class IndexSettings {
         scopedSettings.addSettingsUpdateConsumer(DenseVectorFieldMapper.HNSW_FILTER_HEURISTIC, this::setHnswFilterHeuristic);
         scopedSettings.addSettingsUpdateConsumer(DenseVectorFieldMapper.HNSW_EARLY_TERMINATION, this::setHnswEarlyTermination);
         scopedSettings.addSettingsUpdateConsumer(INTRA_MERGE_PARALLELISM_ENABLED_SETTING, this::setIntraMergeParallelismEnabled);
+        scopedSettings.addSettingsUpdateConsumer(DYNAMIC_STRINGS_AUTO_KEYWORD, this::setDynamicStringsAutoKeyword);
     }
 
     private void setSearchIdleAfter(TimeValue searchIdleAfter) {
@@ -2267,5 +2277,16 @@ public final class IndexSettings {
 
     public boolean sequenceNumbersDisabled() {
         return disableSequenceNumbers;
+    }
+
+    private void setDynamicStringsAutoKeyword(boolean enabled) {
+        this.dynamicStringsAutoKeyword = enabled;
+    }
+
+    /**
+     * Returns <code>true</code> if dynamically mapped strings should be mapped with a keyword subfield.
+     */
+    public boolean getDynamicStringsAutoKeyword() {
+        return dynamicStringsAutoKeyword;
     }
 }
