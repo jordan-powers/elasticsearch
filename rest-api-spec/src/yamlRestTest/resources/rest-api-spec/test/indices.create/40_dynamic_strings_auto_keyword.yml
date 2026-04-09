@@ -32,7 +32,6 @@ setup:
 
   - match: { test_dynamic_strings_default.mappings.properties.new_field.type: text }
   - match: { test_dynamic_strings_default.mappings.properties.new_field.fields.keyword.type: keyword }
-  - match: { test_dynamic_strings_default.mappings.properties.new_field.fields.keyword.ignore_above: 256 }
 
 ---
 "Dynamic string without auto keyword omits keyword subfield":
@@ -53,20 +52,74 @@ setup:
 
   - do:
       indices.get_settings:
-        index: test_dynamic_strings_default
-        include_defaults: true
+        index: test_dynamic_strings_no_kw
 
-  - match: { test_dynamic_strings_default.defaults.index.mapping.dynamic_strings.auto_keyword: "true" }
+  - match: { test_dynamic_strings_no_kw.settings.index.mapping.dynamic_strings.auto_keyword: "false" }
 
   - do:
       indices.get_mapping:
         index: test_dynamic_strings_no_kw
 
   - match: { test_dynamic_strings_no_kw.mappings.properties.new_field.type: text }
+  - match: { test_dynamic_strings_no_kw.mappings.properties.new_field.doc_values: true }
   - is_false: test_dynamic_strings_no_kw.mappings.properties.new_field.fields
+
+---
+"Dynamic string with auto keyword later disabled omits keyword subfield":
+  - do:
+      indices.create:
+        index: test_dynamic_strings
+        body:
+          settings:
+            index.mapping.dynamic_strings.auto_keyword: true
+          mappings: { }
+
+  - do:
+      index:
+        index: test_dynamic_strings
+        id: "1"
+        body:
+          new_field: "hello"
 
   - do:
       indices.get_settings:
-        index: test_dynamic_strings_no_kw
+        index: test_dynamic_strings
 
-  - match: { test_dynamic_strings_no_kw.settings.index.mapping.dynamic_strings.auto_keyword: "false" }
+  - match: { test_dynamic_strings.settings.index.mapping.dynamic_strings.auto_keyword: "true" }
+
+  - do:
+      indices.get_mapping:
+        index: test_dynamic_strings
+
+  - match: { test_dynamic_strings.mappings.properties.new_field.type: text }
+  - match: { test_dynamic_strings.mappings.properties.new_field.fields.keyword.type: keyword }
+
+  - do:
+      indices.put_settings:
+        index: test_dynamic_strings
+        body:
+          index.mapping.dynamic_strings.auto_keyword: false
+
+  - do:
+      index:
+        index: test_dynamic_strings
+        id: "2"
+        body:
+          new_field_2: "hello"
+
+  - do:
+      indices.get_settings:
+        index: test_dynamic_strings
+
+  - match: { test_dynamic_strings.settings.index.mapping.dynamic_strings.auto_keyword: "false" }
+
+  - do:
+      indices.get_mapping:
+        index: test_dynamic_strings
+
+  - match: { test_dynamic_strings.mappings.properties.new_field.type: text }
+  - match: { test_dynamic_strings.mappings.properties.new_field.fields.keyword.type: keyword }
+
+  - match: { test_dynamic_strings.mappings.properties.new_field_2.type: text }
+  - match: { test_dynamic_strings.mappings.properties.new_field_2.doc_values: true }
+  - is_false: test_dynamic_strings.mappings.properties.new_field_2.fields
