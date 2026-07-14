@@ -2655,7 +2655,7 @@ public class IgnoredSourceFieldMapperTests extends MapperServiceTestCase {
         assertEquals(
             IgnoredSourceFieldMapper.IgnoredSourceFormat.DOC_VALUES_IGNORED_SOURCE,
             IgnoredSourceFieldMapper.ignoredSourceFormat(
-                createIndexSettings(IndexVersions.IGNORED_SOURCE_AS_DOC_VALUES, tsdbDocValuesFormatEnabled)
+                createIndexSettings(IndexVersions.IGNORED_SOURCE_AS_DOC_VALUES_NO_FF, tsdbDocValuesFormatEnabled)
             )
         );
 
@@ -2663,7 +2663,7 @@ public class IgnoredSourceFieldMapperTests extends MapperServiceTestCase {
         assertNotEquals(
             IgnoredSourceFieldMapper.IgnoredSourceFormat.DOC_VALUES_IGNORED_SOURCE,
             IgnoredSourceFieldMapper.ignoredSourceFormat(
-                createIndexSettings(IndexVersions.IGNORED_SOURCE_AS_DOC_VALUES, tsdbDocValuesFormatDisabled)
+                createIndexSettings(IndexVersions.IGNORED_SOURCE_AS_DOC_VALUES_NO_FF, tsdbDocValuesFormatDisabled)
             )
         );
 
@@ -2672,7 +2672,7 @@ public class IgnoredSourceFieldMapperTests extends MapperServiceTestCase {
             IgnoredSourceFieldMapper.IgnoredSourceFormat.DOC_VALUES_IGNORED_SOURCE,
             IgnoredSourceFieldMapper.ignoredSourceFormat(
                 createIndexSettings(
-                    IndexVersionUtils.getPreviousVersion(IndexVersions.IGNORED_SOURCE_AS_DOC_VALUES),
+                    IndexVersionUtils.getPreviousVersion(IndexVersions.IGNORED_SOURCE_AS_DOC_VALUES_NO_FF),
                     tsdbDocValuesFormatEnabled
                 )
             )
