@@ -57,8 +57,8 @@ public class LogsdbIndexingRollingUpgradeIT extends AbstractLogsdbRollingUpgrade
                   "type": "double"
                 },
                 "tag": {
-                  "type": "keyword",
-                  "synthetic_source_keep": "all"
+                  "type": "keyword"
+                  %%tag_keep_mode%%
                 }
               }
             }
@@ -74,8 +74,11 @@ public class LogsdbIndexingRollingUpgradeIT extends AbstractLogsdbRollingUpgrade
         {
             maybeEnableLogsdbByDefault();
 
+            final String tagKeepMode = columnarEnabled ? "" : ",\"synthetic_source_keep\":\"all\"";
+            final String template = TEMPLATE.replace("%%tag_keep_mode%%", tagKeepMode);
+
             String templateId = getClass().getSimpleName().toLowerCase(Locale.ROOT);
-            createTemplate(dataStreamName, templateId, TEMPLATE);
+            createTemplate(dataStreamName, templateId, template);
 
             time = Instant.now().minusSeconds(60 * 60);
             bulkIndex(dataStreamName, 4, 1024, time, LogsdbIndexingRollingUpgradeIT::docSupplier);

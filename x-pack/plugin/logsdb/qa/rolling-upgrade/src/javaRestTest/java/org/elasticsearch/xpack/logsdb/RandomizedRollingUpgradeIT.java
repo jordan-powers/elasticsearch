@@ -53,20 +53,24 @@ import static org.hamcrest.Matchers.greaterThan;
 
 public class RandomizedRollingUpgradeIT extends AbstractLogsdbRollingUpgradeTestCase {
 
+    private record Document(String id, String body) {}
+
     private record TestIndexConfig(
         String indexName,
         Template template,
         Settings.Builder settings,
         Mapping mapping,
-        List<String> documents
+        List<Document> documents,
+        boolean autoId
     ) {
-        TestIndexConfig(String indexName, Template template, Settings.Builder settings, Mapping mapping) {
-            this(indexName, template, settings, mapping, new ArrayList<>());
+        TestIndexConfig(String indexName, Template template, Settings.Builder settings, Mapping mapping, boolean autoId) {
+            this(indexName, template, settings, mapping, new ArrayList<>(), autoId);
         }
     }
 
     private static final int NUM_INDICES = 3;
     private static final int NUM_DOCS = 8;
+    private static final int DOC_ID_BASE = 100;
 
     private static DataGeneratorSpecification buildDefaultSpec() {
         return buildIndexModeSpec(
@@ -89,29 +93,35 @@ public class RandomizedRollingUpgradeIT extends AbstractLogsdbRollingUpgradeTest
      * is written and exercised by the source-fetch assertions in {@link #testQueryAll}.
      */
     private static DataGeneratorSpecification buildLogsdbSpec() {
-        return buildIndexModeSpec(
-            List.of(
-                new PredefinedField.WithGeneratorProvider(
-                    "@timestamp",
-                    FieldType.DATE,
-                    Map.of("type", "date"),
-                    DateFieldDataGenerator::new
-                ),
-                new PredefinedField.WithGeneratorProvider(
-                    "flattened",
-                    FieldType.FLATTENED,
-                    Map.of("type", "flattened"),
-                    FlattenedFieldDataGenerator::new
-                ),
-                // synthetic_source_keep:all unconditionally writes to _ignored_source regardless of field type
+        List<PredefinedField> predefinedFields = new ArrayList<>();
+        predefinedFields.add(
+            new PredefinedField.WithGeneratorProvider(
+                "@timestamp",
+                FieldType.DATE,
+                Map.of("type", "date"),
+                ds -> new DateFieldDataGenerator(ds, true)
+            )
+        );
+        predefinedFields.add(
+            new PredefinedField.WithGeneratorProvider(
+                "flattened",
+                FieldType.FLATTENED,
+                Map.of("type", "flattened"),
+                FlattenedFieldDataGenerator::new
+            )
+        );
+        if (columnarEnabled == false) {
+            predefinedFields.add(
                 new PredefinedField.WithGenerator(
                     "keep_all",
                     FieldType.KEYWORD,
                     Map.of("type", "keyword", "synthetic_source_keep", "all"),
                     (mapping) -> ESTestCase.randomAlphaOfLengthBetween(3, 8)
                 )
-            )
-        );
+            );
+        }
+
+        return buildIndexModeSpec(predefinedFields);
     }
 
     /**
@@ -124,11 +134,12 @@ public class RandomizedRollingUpgradeIT extends AbstractLogsdbRollingUpgradeTest
     private static DataGeneratorSpecification buildTimeSeriesSpec() {
         return buildIndexModeSpec(
             List.of(
+                // singleValued=true: time_series rejects null or multi-value @timestamp
                 new PredefinedField.WithGeneratorProvider(
                     "@timestamp",
                     FieldType.DATE,
                     Map.of("type", "date"),
-                    DateFieldDataGenerator::new
+                    ds -> new DateFieldDataGenerator(ds, true)
                 ),
                 // Single-valued keyword dimension; lambda bypasses Wrappers.defaults to prevent array wrapping.
                 new PredefinedField.WithGenerator(
@@ -276,7 +287,9 @@ public class RandomizedRollingUpgradeIT extends AbstractLogsdbRollingUpgradeTest
     private TestIndexConfig createIndex(String indexName, Settings.Builder settings, TemplateGenerator tmplGen, MappingGenerator mapGen)
         throws IOException {
         var template = tmplGen.generate();
-        TestIndexConfig indexConfig = new TestIndexConfig(indexName, template, settings, mapGen.generate(template));
+        // time_series mode auto-computes _id from dimensions + timestamp; explicit _id is rejected
+        boolean autoId = IndexMode.TIME_SERIES.getName().equals(settings.build().get(IndexSettings.MODE.getKey()));
+        TestIndexConfig indexConfig = new TestIndexConfig(indexName, template, settings, mapGen.generate(template), autoId);
 
         @SuppressWarnings("unchecked")
         Map<String, Object> mappingRaw = (Map<String, Object>) indexConfig.mapping.raw().get("_doc");
@@ -295,38 +308,55 @@ public class RandomizedRollingUpgradeIT extends AbstractLogsdbRollingUpgradeTest
 
     private void indexDocuments(TestIndexConfig indexConfig, DocumentGenerator docGen) throws IOException {
         StringBuilder bulkBuilder = new StringBuilder();
+        List<String> documents = new ArrayList<>();
         for (int i = 0; i < NUM_DOCS; ++i) {
-            int docId = indexConfig.documents.size();
+            int docId = DOC_ID_BASE + indexConfig.documents.size() + i;
             Map<String, Object> doc = docGen.generate(indexConfig.template, indexConfig.mapping);
             String docStr = Strings.toString(XContentFactory.jsonBuilder().map(doc));
-            indexConfig.documents.add(docStr);
-            bulkBuilder.append(Strings.format("{\"create\":{ \"_id\": %d }}\n", docId));
+            documents.add(docStr);
+            // time_series auto-computes _id from dimensions + timestamp; setting it explicitly is rejected
+            String createAction = indexConfig.autoId() ? "{\"create\":{}}" : Strings.format("{\"create\":{ \"_id\": %d }}", docId);
+            bulkBuilder.append(createAction).append('\n');
             bulkBuilder.append(docStr).append('\n');
         }
 
         String jsonBody = bulkBuilder.toString();
-        var request = new Request("POST", "/" + indexConfig.indexName + "/_bulk");
+        var request = new Request("POST", "/" + indexConfig.indexName() + "/_bulk");
         request.setJsonEntity(jsonBody);
         request.addParameter("refresh", "true");
         var response = client().performRequest(request);
         assertOK(response);
         var responseBody = entityAsMap(response);
+
         assertThat("errors in bulk response:\n " + responseBody, responseBody.get("errors"), equalTo(false));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> items = (List<Map<String, Object>>) responseBody.get("items");
+        for (int i = 0; i < items.size(); i++) {
+            @SuppressWarnings("unchecked")
+            String id = (String) ((Map<String, Object>) items.get(i).get("create")).get("_id");
+            assertNotNull("null _id in: " + items.get(i), id);
+            if (indexConfig.autoId == false) {
+                assertEquals(Integer.toString(DOC_ID_BASE + indexConfig.documents.size()), id);
+            }
+            indexConfig.documents.add(new Document(id, documents.get(i)));
+        }
     }
 
     private void testQueryAll(TestIndexConfig indexConfig) throws IOException {
         var xcontentMappings = XContentFactory.jsonBuilder().map(indexConfig.mapping().raw());
 
-        var actualSettings = getIndexSettingsAsMap(indexConfig.indexName);
+        var actualSettings = getIndexSettingsAsMap(indexConfig.indexName());
         var actualSettingsBuilder = Settings.builder().loadFromMap(actualSettings);
 
         var query = new SearchSourceBuilder().query(QueryBuilders.matchAllQuery()).size(indexConfig.documents.size());
 
         var expectedDocs = indexConfig.documents.stream()
-            .map(d -> XContentHelper.convertToMap(XContentType.JSON.xContent(), d, true))
+            .sorted(Comparator.comparing(d -> d.id))
+            .map(d -> XContentHelper.convertToMap(XContentType.JSON.xContent(), d.body, true))
             .toList();
 
-        var queryHits = getQueryHits(queryIndex(indexConfig.indexName, query));
+        var queryHits = getQueryHits(queryIndex(indexConfig.indexName(), query));
 
         final MatchResult matchResult = Matcher.matchSource()
             .mappings(indexConfig.mapping().lookup(), xcontentMappings, xcontentMappings)
@@ -352,7 +382,7 @@ public class RandomizedRollingUpgradeIT extends AbstractLogsdbRollingUpgradeTest
         assertThat(hitsList.size(), greaterThan(0));
 
         return hitsList.stream()
-            .sorted(Comparator.comparing((Map<String, Object> hit) -> Integer.valueOf((String) hit.get("_id"))))
+            .sorted(Comparator.comparing(hit -> (String) hit.get("_id")))
             .map(hit -> (Map<String, Object>) hit.get("_source"))
             .toList();
     }
@@ -360,11 +390,12 @@ public class RandomizedRollingUpgradeIT extends AbstractLogsdbRollingUpgradeTest
     private void testEsqlSource(TestIndexConfig indexConfig) throws IOException {
         var xcontentMappings = XContentFactory.jsonBuilder().map(indexConfig.mapping().raw());
 
-        var actualSettings = getIndexSettingsAsMap(indexConfig.indexName);
+        var actualSettings = getIndexSettingsAsMap(indexConfig.indexName());
         var actualSettingsBuilder = Settings.builder().loadFromMap(actualSettings);
 
         var expectedDocs = indexConfig.documents.stream()
-            .map(d -> XContentHelper.convertToMap(XContentType.JSON.xContent(), d, true))
+            .sorted(Comparator.comparing(d -> d.id))
+            .map(d -> XContentHelper.convertToMap(XContentType.JSON.xContent(), d.body, true))
             .toList();
 
         final String query = "FROM "
@@ -396,7 +427,7 @@ public class RandomizedRollingUpgradeIT extends AbstractLogsdbRollingUpgradeTest
 
         // Results contain a list of [source, id] lists.
         return values.stream()
-            .sorted(Comparator.comparing((List<Object> value) -> Integer.valueOf(((String) value.get(1)))))
+            .sorted(Comparator.comparing(value -> (String) value.get(1)))
             .map(value -> (Map<String, Object>) value.get(0))
             .toList();
     }
