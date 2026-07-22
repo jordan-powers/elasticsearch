@@ -39,6 +39,7 @@ import org.elasticsearch.index.mapper.MapperFeatures;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.test.ESTestCase;
+import org.elasticsearch.test.rest.ObjectPath;
 import org.elasticsearch.xcontent.XContentFactory;
 import org.elasticsearch.xcontent.XContentType;
 
@@ -333,8 +334,7 @@ public class RandomizedRollingUpgradeIT extends AbstractLogsdbRollingUpgradeTest
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> items = (List<Map<String, Object>>) responseBody.get("items");
         for (int i = 0; i < items.size(); i++) {
-            @SuppressWarnings("unchecked")
-            String id = (String) ((Map<String, Object>) items.get(i).get("create")).get("_id");
+            String id = ObjectPath.evaluate(items.get(i), "create._id");
             assertNotNull("null _id in: " + items.get(i), id);
             if (indexConfig.autoId == false) {
                 assertEquals(Integer.toString(DOC_ID_BASE + indexConfig.documents.size()), id);
@@ -376,8 +376,7 @@ public class RandomizedRollingUpgradeIT extends AbstractLogsdbRollingUpgradeTest
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> getQueryHits(final Response response) throws IOException {
         final Map<String, Object> map = XContentHelper.convertToMap(XContentType.JSON.xContent(), response.getEntity().getContent(), true);
-
-        final List<Map<String, Object>> hitsList = (List<Map<String, Object>>) ((Map<String, Object>) map.get("hits")).get("hits");
+        final List<Map<String, Object>> hitsList = ObjectPath.evaluate(map, "hits.hits");
 
         assertThat(hitsList.size(), greaterThan(0));
 
