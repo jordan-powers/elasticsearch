@@ -92,35 +92,28 @@ public class RandomizedRollingUpgradeIT extends AbstractLogsdbRollingUpgradeTest
      * is written and exercised by the source-fetch assertions in {@link #testQueryAll}.
      */
     private static DataGeneratorSpecification buildLogsdbSpec() {
-        List<PredefinedField> predefinedFields = new ArrayList<>();
-        predefinedFields.add(
-            new PredefinedField.WithGeneratorProvider(
-                "@timestamp",
-                FieldType.DATE,
-                Map.of("type", "date"),
-                ds -> new DateFieldDataGenerator(ds, true)
-            )
-        );
-        predefinedFields.add(
-            new PredefinedField.WithGeneratorProvider(
-                "flattened",
-                FieldType.FLATTENED,
-                Map.of("type", "flattened"),
-                FlattenedFieldDataGenerator::new
-            )
-        );
-        if (columnarEnabled == false) {
-            predefinedFields.add(
+        return buildIndexModeSpec(
+            List.of(
+                new PredefinedField.WithGeneratorProvider(
+                    "@timestamp",
+                    FieldType.DATE,
+                    Map.of("type", "date"),
+                    ds -> new DateFieldDataGenerator(ds, true)
+                ),
+                new PredefinedField.WithGeneratorProvider(
+                    "flattened",
+                    FieldType.FLATTENED,
+                    Map.of("type", "flattened"),
+                    FlattenedFieldDataGenerator::new
+                ),
                 new PredefinedField.WithGenerator(
                     "keep_all",
                     FieldType.KEYWORD,
                     Map.of("type", "keyword", "synthetic_source_keep", "all"),
                     (mapping) -> ESTestCase.randomAlphaOfLengthBetween(3, 8)
                 )
-            );
-        }
-
-        return buildIndexModeSpec(predefinedFields);
+            )
+        );
     }
 
     /**
