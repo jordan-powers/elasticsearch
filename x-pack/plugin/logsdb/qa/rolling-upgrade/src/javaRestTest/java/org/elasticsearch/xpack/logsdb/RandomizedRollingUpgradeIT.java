@@ -88,8 +88,6 @@ public class RandomizedRollingUpgradeIT extends AbstractLogsdbRollingUpgradeTest
 
     /**
      * Builds a {@link DataGeneratorSpecification} suitable for logsdb (and logsdb_columnar) index mode.
-     * Includes a predefined {@code @timestamp} field so documents are self-consistent and the source
-     * matcher does not trip over the auto-populated timestamp injected by logsdb on the server side.
      * Includes a {@code synthetic_source_keep: all} keyword field to guarantee {@code _ignored_source}
      * is written and exercised by the source-fetch assertions in {@link #testQueryAll}.
      */
@@ -128,7 +126,7 @@ public class RandomizedRollingUpgradeIT extends AbstractLogsdbRollingUpgradeTest
     /**
      * Builds a {@link DataGeneratorSpecification} suitable for time_series index mode.
      * Includes {@code @timestamp} and a keyword dimension field ({@code ts_host}) so that every
-     * document satisfies the routing-path requirement without multi-value dimension values.
+     * document satisfies the routing-path requirement.
      * Includes a {@code synthetic_source_keep: all} keyword field to guarantee {@code _ignored_source}
      * is written and exercised by the source-fetch assertions in {@link #testQueryAll}.
      */
