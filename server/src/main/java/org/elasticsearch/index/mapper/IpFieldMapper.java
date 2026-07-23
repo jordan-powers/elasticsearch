@@ -79,20 +79,27 @@ public class IpFieldMapper extends FieldMapper {
 
     public static final String CONTENT_TYPE = "ip";
 
+    private static final DocValuesParameter.Values DEFAULT_STANDARD_DOC_VALUES_PARAMS = new DocValuesParameter.Values(
+        true,
+        DocValuesParameter.Values.Cardinality.LOW,
+        true
+    );
+    private static final DocValuesParameter.Values DEFAULT_COLUMNAR_DOC_VALUES_PARAMS = new DocValuesParameter.Values(
+        true,
+        DocValuesParameter.Values.Cardinality.HIGH,
+        true
+    );
+
     private static IpFieldMapper toType(FieldMapper in) {
         return (IpFieldMapper) in;
     }
 
     private static DocValuesParameter.Values defaultDocValuesParameters(IndexMode indexMode) {
         if (DocValuesParameter.EXTENDED_DOC_VALUES_PARAMS_FF.isEnabled() == false) {
-            return new DocValuesParameter.Values(true, DocValuesParameter.Values.Cardinality.LOW, true);
+            return DEFAULT_STANDARD_DOC_VALUES_PARAMS;
         }
 
-        if (indexMode.isStrictColumnar()) {
-            return new DocValuesParameter.Values(true, DocValuesParameter.Values.Cardinality.HIGH, true);
-        }
-
-        return new DocValuesParameter.Values(true, DocValuesParameter.Values.Cardinality.LOW, true);
+        return indexMode.isStrictColumnar() ? DEFAULT_COLUMNAR_DOC_VALUES_PARAMS : DEFAULT_STANDARD_DOC_VALUES_PARAMS;
     }
 
     public static final class Builder extends FieldMapper.DimensionBuilder {

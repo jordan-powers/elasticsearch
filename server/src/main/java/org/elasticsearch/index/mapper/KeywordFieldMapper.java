@@ -128,6 +128,17 @@ public final class KeywordFieldMapper extends FieldMapper {
     public static final String CONTENT_TYPE = "keyword";
     private static final String HOST_NAME = "host.name";
 
+    private static final DocValuesParameter.Values DEFAULT_STANDARD_DOC_VALUES_PARAMS = new DocValuesParameter.Values(
+        true,
+        DocValuesParameter.Values.Cardinality.LOW,
+        true
+    );
+    private static final DocValuesParameter.Values DEFAULT_COLUMNAR_DOC_VALUES_PARAMS = new DocValuesParameter.Values(
+        true,
+        DocValuesParameter.Values.Cardinality.HIGH,
+        true
+    );
+
     public static class Defaults {
         public static final FieldType FIELD_TYPE;
         public static final FieldType FIELD_TYPE_WITH_SKIP_DOC_VALUES;
@@ -186,14 +197,10 @@ public final class KeywordFieldMapper extends FieldMapper {
 
     private static DocValuesParameter.Values defaultDocValuesParameters(IndexMode indexMode) {
         if (DocValuesParameter.EXTENDED_DOC_VALUES_PARAMS_FF.isEnabled() == false) {
-            return new DocValuesParameter.Values(true, DocValuesParameter.Values.Cardinality.LOW, true);
+            return DEFAULT_STANDARD_DOC_VALUES_PARAMS;
         }
 
-        if (indexMode.isStrictColumnar()) {
-            return new DocValuesParameter.Values(true, DocValuesParameter.Values.Cardinality.HIGH, true);
-        }
-
-        return new DocValuesParameter.Values(true, DocValuesParameter.Values.Cardinality.LOW, true);
+        return indexMode.isStrictColumnar() ? DEFAULT_COLUMNAR_DOC_VALUES_PARAMS : DEFAULT_STANDARD_DOC_VALUES_PARAMS;
     }
 
     private static KeywordFieldMapper toType(FieldMapper in) {
