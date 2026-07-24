@@ -60,24 +60,23 @@ public class ICUCollationKeywordFieldMapper extends FieldMapper {
 
     public static final String CONTENT_TYPE = "icu_collation_keyword";
 
-    private static DocValuesParameter.Values defaultDocValuesParameters(IndexMode indexMode) {
-        if (indexMode.isStrictColumnar()) {
-            return new DocValuesParameter.Values(
-                true,
-                DocValuesParameter.Values.Cardinality.HIGH,
-                true,
-                true,
-                DocValuesParameter.Values.OnFailure.FAIL
-            );
-        }
+    private static final DocValuesParameter.Values DEFAULT_STANDARD_DOC_VALUES_PARAMS = new DocValuesParameter.Values(
+        true,
+        DocValuesParameter.Values.Cardinality.LOW,
+        true,
+        true,
+        DocValuesParameter.Values.OnFailure.FAIL
+    );
+    private static final DocValuesParameter.Values DEFAULT_COLUMNAR_DOC_VALUES_PARAMS = new DocValuesParameter.Values(
+        true,
+        DocValuesParameter.Values.Cardinality.HIGH,
+        true,
+        true,
+        DocValuesParameter.Values.OnFailure.FAIL
+    );
 
-        return new DocValuesParameter.Values(
-            true,
-            DocValuesParameter.Values.Cardinality.LOW,
-            true,
-            true,
-            DocValuesParameter.Values.OnFailure.FAIL
-        );
+    private static DocValuesParameter.Values defaultDocValuesParameters(IndexMode indexMode) {
+        return indexMode.isStrictColumnar() ? DEFAULT_COLUMNAR_DOC_VALUES_PARAMS : DEFAULT_STANDARD_DOC_VALUES_PARAMS;
     }
 
     public static final class CollationFieldType extends StringFieldType {
